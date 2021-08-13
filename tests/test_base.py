@@ -6,7 +6,8 @@ def test_backends():
 
     assert BACKENDS
     assert BACKENDS['sqlite']
-    assert BACKENDS['postgres']
+    assert BACKENDS['postgresql']
+    assert BACKENDS['mysql']
 
 
 def test_database():

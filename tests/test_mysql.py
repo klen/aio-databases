@@ -5,7 +5,7 @@ import pytest
 async def db():
     from aio_databases import Database
 
-    async with Database('mysql://mysql:mysql@localhost:3306/test') as db:
+    async with Database('mysql://test:test@localhost:3306/tests') as db:
         yield db
 
 

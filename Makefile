@@ -8,6 +8,7 @@ $(VIRTUAL_ENV): setup.cfg
 .PHONY: test
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)
+	docker start postgres mysql
 	@$(VIRTUAL_ENV)/bin/pytest --log-format "%(levelname)s %(message)s" tests
 
 .PHONY: mypy

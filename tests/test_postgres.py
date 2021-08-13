@@ -6,7 +6,7 @@ from sqlalchemy.schema import CreateTable, DropTable
 async def db():
     from aio_databases import Database
 
-    async with Database('postgres://postgres:postgres@localhost:5432/test') as db:
+    async with Database('postgresql://test:test@localhost:5432/tests') as db:
         yield db
 
 

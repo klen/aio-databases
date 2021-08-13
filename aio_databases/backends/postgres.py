@@ -8,7 +8,7 @@ from . import ABCDabaseBackend, ABCConnectionBackend
 
 class PostgresBackend(ABCDabaseBackend):
 
-    name = 'postgres'
+    name = 'postgresql'
     pool: t.Optional[Pool] = None
 
     def connection(self) -> PostgresConnection:
