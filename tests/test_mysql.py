@@ -1,15 +1,11 @@
-import os
 import pytest
-
-
-DB_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 
 
 @pytest.fixture
 async def db():
     from aio_databases import Database
 
-    async with Database(f"mysql://test:test@{DB_HOST}:3306/tests") as db:
+    async with Database('mysql://test:test@localhost:3306/tests') as db:
         yield db
 
 

@@ -1,16 +1,12 @@
-import os
 import pytest
 from sqlalchemy.schema import CreateTable, DropTable
-
-
-DB_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
 
 
 @pytest.fixture
 async def db():
     from aio_databases import Database
 
-    async with Database(f"postgresql://test:test@{DB_HOST}:5432/tests") as db:
+    async with Database('postgresql://test:test@localhost:5432/tests') as db:
         yield db
 
 
