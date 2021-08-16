@@ -3,6 +3,11 @@
 The package gives you asycio support for a range of databases (SQLite,
 PostgreSQL, MySQL).
 
+[![Tests Status](https://github.com/klen/aio-databases/workflows/tests/badge.svg)](https://github.com/klen/aio-databases/actions)
+[![PYPI Version](https://img.shields.io/pypi/v/aio-databases)](https://pypi.org/project/aio-databases/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/aio-databases)](https://pypi.org/project/aio-databases/)
+
+
 ## Requirements
 
 * python >= 3.7
