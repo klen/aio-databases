@@ -17,14 +17,18 @@ jobs:
 
     services:
       mysql:
-        image: mysql:5.7
+        image: mysql
         env:
-          # MYSQL_HOST: 127.0.0.1
           MYSQL_DB: tests
           MYSQL_USER: test
           MYSQL_PASSWORD: test
-        # ports:
-        #   - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - "3306:3306"
       postgres:
         image: postgres
         env:
@@ -64,8 +68,6 @@ jobs:
 
     - name: Test with pytest
       run: env/bin/pytest tests
-      env:
-        MYSQL_HOST: mysql
 
   # notify:
   #   runs-on: ubuntu-latest

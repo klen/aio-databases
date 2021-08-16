@@ -4,8 +4,6 @@ import pytest
 
 DB_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 
-pytestmark = pytest.mark.skip('skip mysql')
-
 
 @pytest.fixture
 async def db():
