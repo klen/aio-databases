@@ -1,11 +1,15 @@
+import os
 import pytest
+
+
+URL = os.environ.get('MYSQL_URL', 'mysql://root@127.0.0.1:3306/tests')
 
 
 @pytest.fixture
 async def db():
     from aio_databases import Database
 
-    async with Database('mysql://test:test@127.0.0.1:3306/tests') as db:
+    async with Database(URL) as db:
         yield db
 
 
