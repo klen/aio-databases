@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import typing as t
-import aiomysql
 from uuid import uuid4
+
+from aiomysql import Pool, Connection, create_pool
 
 from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
@@ -10,13 +11,13 @@ from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 class MysqlBackend(ABCDabaseBackend):
 
     name = 'mysql'
-    pool: t.Optional[aiomysql.Pool] = None
+    pool: t.Optional[Pool] = None
 
     def connection(self) -> MysqlConnection:
         return MysqlConnection(self)
 
     async def connect(self) -> None:
-        self.pool = await aiomysql.create_pool(
+        self.pool = await create_pool(
             **self.options,
             host=self.url.hostname,
             port=self.url.port,
@@ -33,12 +34,12 @@ class MysqlBackend(ABCDabaseBackend):
         pool.close()
         await pool.wait_closed()
 
-    async def acquire(self) -> aiomysql.Connection:
+    async def acquire(self) -> Connection:
         pool = self.pool
         assert pool is not None, "Database is not connected"
         return await pool.acquire()
 
-    async def release(self, conn: aiomysql.Connection):
+    async def release(self, conn: Connection):
         pool = self.pool
         assert pool is not None, "Database is not connected"
         await pool.release(conn)
