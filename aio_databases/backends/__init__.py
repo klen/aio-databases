@@ -157,5 +157,5 @@ except ImportError:
 
 try:
     from .mysql import *  # noqa
-except ImportError:
-    pass
+except ImportError as exc:
+    print(exc)
