@@ -46,7 +46,7 @@ class ABCConnection(abc.ABC):
 
     def __init__(self, database: ABCDabaseBackend):
         self.database = database
-        self.transactions = []
+        self.transactions: t.List[ABCTransaction] = []
         self._conn = None
         self._lock = asyncio.Lock()
 

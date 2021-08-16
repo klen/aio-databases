@@ -62,9 +62,7 @@ class SQLiteConnection(ABCConnection):
 
 class SQLiteTransaction(ABCTransaction):
 
-    def __init__(self, connection: SQLiteConnection):
-        super(SQLiteTransaction, self).__init__(connection)
-        self.savepoint = None
+    savepoint: t.Optional[str] = None
 
     async def _start(self) -> t.Any:
         connection = self.connection

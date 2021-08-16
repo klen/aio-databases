@@ -71,7 +71,7 @@ class PostgresConnection(ABCConnection):
 
 class PostgresTransaction(ABCTransaction):
 
-    def __init__(self, connection: PostgresTransaction):
+    def __init__(self, connection: PostgresConnection):
         super(PostgresTransaction, self).__init__(connection)
         self.trans = self.connection.conn.transaction()
 
