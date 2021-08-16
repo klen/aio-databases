@@ -1,6 +1,7 @@
 import pytest
 
 
+@pytest.mark.skip
 def test_backends():
     from aio_databases.backends import BACKENDS
 

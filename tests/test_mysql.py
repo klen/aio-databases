@@ -1,18 +1,14 @@
-import os
 import pytest
 
 from sqlalchemy import create_engine
 from sqlalchemy.schema import CreateTable, DropTable
 
 
-URL = os.environ.get('MYSQL_URL', 'mysql://root@127.0.0.1:3306/tests')
-
-
 @pytest.fixture
 async def db():
     from aio_databases import Database
 
-    async with Database(URL) as db:
+    async with Database('mysql://root@127.0.0.1:3306/tests') as db:
         yield db
 
 
