@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 from .backends import BACKENDS, ABCDabaseBackend, ABCConnectionBackend
 
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 logger = logging.getLogger('aiodb')
