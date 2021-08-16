@@ -8,7 +8,7 @@ import logging
 from contextvars import ContextVar
 from urllib.parse import urlsplit
 
-from .backends import BACKENDS, ABCDabaseBackend, ABCConnectionBackend
+from .backends import BACKENDS, ABCDabaseBackend, ABCConnection
 
 
 __version__ = '0.0.3'
@@ -60,7 +60,7 @@ class Database:
     __aexit__ = disconnect
 
     @property
-    def connection(self) -> ABCConnectionBackend:
+    def connection(self) -> ABCConnection:
         """Get/create a connection from/to the current context."""
         conn = self._conn_ctx.get(None)
         if conn is None:
@@ -68,6 +68,9 @@ class Database:
             self._conn_ctx.set(conn)
 
         return conn
+
+    def transaction(self):
+        return self.connection.transaction()
 
     async def execute(self, query: t.Any, *args, **params) -> t.Any:
         conn = await self.connection.acquire()

@@ -25,8 +25,8 @@ def users(metadata):
     return Table(
         'users', metadata,
         Column('id', Integer, primary_key=True),
-        Column('name', String),
-        Column('fullname', String),
+        Column('name', String(length=256)),
+        Column('fullname', String(length=256)),
     )
 
 
@@ -36,5 +36,5 @@ def addresses(metadata):
         'addresses', metadata,
         Column('id', Integer, primary_key=True),
         Column('user_id', None, ForeignKey('users.id')),
-        Column('email_address', String, nullable=False)
+        Column('email_address', String(length=256), nullable=False)
     )

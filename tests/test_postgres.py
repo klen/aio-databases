@@ -1,4 +1,5 @@
 import pytest
+
 from sqlalchemy.schema import CreateTable, DropTable
 
 
@@ -25,19 +26,27 @@ async def test_base(db):
     assert res == 4
 
 
-async def test_tables(db, engine, users, addresses, caplog):
+async def test_db(db, engine, users, addresses, caplog):
     await db.execute(CreateTable(users).compile(engine))
 
-    res = await db.execute(
-        'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'jim', 'Jim Jones')
-    assert res
+    async with db.transaction() as main_trans:
+        assert main_trans
 
-    res = await db.execute(
-        'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'tom', 'Tom Smith')
-    assert res
+        res = await db.execute(
+            'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'jim', 'Jim Jones')
+        assert res
+
+        async with db.transaction() as trans2:
+            assert trans2
+
+            res = await db.execute(
+                'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'tom', 'Tom Smith')
+            assert res
+
+            await trans2.rollback()
 
     res = await db.fetch(users.select())
     assert res
-    assert res == [(1, 'jim', 'Jim Jones'), (2, 'tom', 'Tom Smith')]
+    assert res == [(1, 'jim', 'Jim Jones')]
 
     await db.execute(DropTable(users).compile(engine))

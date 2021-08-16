@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing as t
 from asyncpg import create_pool, Connection, Pool
 
-from . import ABCDabaseBackend, ABCConnectionBackend
+from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
 
 class PostgresBackend(ABCDabaseBackend):
@@ -41,7 +41,7 @@ class PostgresBackend(ABCDabaseBackend):
         await pool.release(conn)
 
 
-class PostgresConnection(ABCConnectionBackend):
+class PostgresConnection(ABCConnection):
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         conn: Connection = self.conn
@@ -64,3 +64,22 @@ class PostgresConnection(ABCConnectionBackend):
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
         conn: Connection = self.conn
         return await conn.fetchval(query, *args, **params)
+
+    def transaction(self) -> PostgresTransaction:
+        return PostgresTransaction(self)
+
+
+class PostgresTransaction(ABCTransaction):
+
+    def __init__(self, connection: PostgresTransaction):
+        super(PostgresTransaction, self).__init__(connection)
+        self.trans = self.connection.conn.transaction()
+
+    async def _start(self):
+        return await self.trans.start()
+
+    async def _commit(self):
+        return await self.trans.commit()
+
+    async def _rollback(self):
+        return await self.trans.rollback()

@@ -30,7 +30,7 @@ class ABCDabaseBackend(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def connection(self) -> ABCConnectionBackend:
+    def connection(self) -> ABCConnection:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -42,10 +42,11 @@ class ABCDabaseBackend(abc.ABC):
         raise NotImplementedError
 
 
-class ABCConnectionBackend(abc.ABC):
+class ABCConnection(abc.ABC):
 
     def __init__(self, database: ABCDabaseBackend):
         self.database = database
+        self.transactions = []
         self._conn = None
         self._lock = asyncio.Lock()
 
@@ -54,7 +55,7 @@ class ABCConnectionBackend(abc.ABC):
         assert self._conn is not None, "Connection is not acquired"
         return self._conn
 
-    async def acquire(self) -> ABCConnectionBackend:
+    async def acquire(self) -> ABCConnection:
         if self._conn is None:
             async with self._lock:
                 self._conn = await self.database.acquire()
@@ -63,7 +64,7 @@ class ABCConnectionBackend(abc.ABC):
 
     __aenter__ = acquire
 
-    async def release(self, *args) -> ABCConnectionBackend:
+    async def release(self, *args) -> ABCConnection:
         async with self._lock:
             conn, self._conn = self._conn, None
             if conn:
@@ -91,6 +92,60 @@ class ABCConnectionBackend(abc.ABC):
     @abc.abstractmethod
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
         raise NotImplementedError
+
+    def transaction(self) -> ABCTransaction:
+        raise NotImplementedError
+
+
+class ABCTransaction(abc.ABC):
+
+    is_finished: bool = False
+
+    def __init__(self, connection: ABCConnection):
+        self.connection = connection
+
+    @abc.abstractmethod
+    async def _start(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def _commit(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def _rollback(self):
+        raise NotImplementedError
+
+    async def __aenter__(self):
+        await self.start()
+        return self
+
+    async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
+        if not self.is_finished:
+            if exc_type is not None:
+                await self.rollback()
+            else:
+                await self.commit()
+
+    async def start(self):
+        connection = self.connection
+        async with connection._lock:
+            await self._start()
+            connection.transactions.append(self)
+
+    async def commit(self):
+        connection = self.connection
+        async with connection._lock:
+            await self._commit()
+            connection.transactions.remove(self)
+            self.is_finished = True
+
+    async def rollback(self):
+        connection = self.connection
+        async with connection._lock:
+            await self._rollback()
+            connection.transactions.remove(self)
+            self.is_finished = True
 
 
 from .sqlite import *  # noqa

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import typing as t
 import aiomysql
+from uuid import uuid4
 
-from . import ABCDabaseBackend, ABCConnectionBackend
+from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
 
 class MysqlBackend(ABCDabaseBackend):
@@ -43,7 +44,7 @@ class MysqlBackend(ABCDabaseBackend):
         await pool.release(conn)
 
 
-class MysqlConnection(ABCConnectionBackend):
+class MysqlConnection(ABCConnection):
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         cursor = await self.conn.cursor()
@@ -89,3 +90,35 @@ class MysqlConnection(ABCConnectionBackend):
         if res:
             res = res[column]
         return res
+
+    def transaction(self) -> MysqlTransaction:
+        return MysqlTransaction(self)
+
+
+class MysqlTransaction(ABCTransaction):
+
+    def __init__(self, connection: MysqlConnection):
+        super(MysqlTransaction, self).__init__(connection)
+        self.savepoint = None
+
+    async def _start(self) -> t.Any:
+        connection = self.connection
+        if connection.transactions:
+            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
+            return await connection.execute(f"SAVEPOINT {savepoint}")
+
+        return await connection.conn.begin()
+
+    async def _commit(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
+
+        return await self.connection.conn.commit()
+
+    async def _rollback(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+
+        return await self.connection.conn.rollback()

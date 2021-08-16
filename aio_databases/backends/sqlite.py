@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import typing as t
+from uuid import uuid4
 
 import aiosqlite
 
-from . import ABCDabaseBackend, ABCConnectionBackend
+from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
 
 class SqliteBackend(ABCDabaseBackend):
@@ -29,7 +30,7 @@ class SqliteBackend(ABCDabaseBackend):
         await conn.__aexit__(None, None, None)
 
 
-class SQLiteConnection(ABCConnectionBackend):
+class SQLiteConnection(ABCConnection):
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         async with self.conn.cursor() as cursor:
@@ -54,3 +55,35 @@ class SQLiteConnection(ABCConnectionBackend):
         row = await self.fetchrow(query, *args, **params)
         if row:
             return row[column]
+
+    def transaction(self) -> SQLiteTransaction:
+        return SQLiteTransaction(self)
+
+
+class SQLiteTransaction(ABCTransaction):
+
+    def __init__(self, connection: SQLiteConnection):
+        super(SQLiteTransaction, self).__init__(connection)
+        self.savepoint = None
+
+    async def _start(self) -> t.Any:
+        connection = self.connection
+        if connection.transactions:
+            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
+            return await connection.execute(f"SAVEPOINT {savepoint}")
+
+        return await connection.execute("BEGIN")
+
+    async def _commit(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
+
+        return await self.connection.execute("COMMIT")
+
+    async def _rollback(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+
+        return await self.connection.execute("ROLLBACK")
