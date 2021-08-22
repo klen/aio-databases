@@ -12,6 +12,8 @@ BACKENDS = {}
 
 class ABCDabaseBackend(abc.ABC):
 
+    name: str
+
     def __init__(self, url: SplitResult, **options):
         self.url = url
         self.options = dict(parse_qsl(url.query), **options)
