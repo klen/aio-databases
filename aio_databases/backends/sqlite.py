@@ -6,6 +6,7 @@ from uuid import uuid4
 import aiosqlite
 
 from . import ABCDabaseBackend, ABCConnection, ABCTransaction
+from ..record import Record
 
 
 class SqliteBackend(ABCDabaseBackend):
@@ -43,16 +44,22 @@ class SQLiteConnection(ABCConnection):
         for _args in args:
             await self.execute(query, _args, **params)
 
-    async def fetch(self, query: str, *args, **params) -> t.List[t.Tuple]:
+    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
         async with self.conn.execute(query, args) as cursor:
-            return await cursor.fetchall()
+            rows = await cursor.fetchall()
+            desc = cursor.description
+            return [Record(row, desc) for row in rows]
 
-    async def fetchrow(self, query: str, *args, **params) -> t.Optional[t.Tuple]:
+    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
         async with self.conn.execute(query, args) as cursor:
-            return await cursor.fetchone()
+            row = await cursor.fetchone()
+            if row is None:
+                return row
+
+            return Record(row, cursor.description)
 
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
-        row = await self.fetchrow(query, *args, **params)
+        row = await self.fetchone(query, *args, **params)
         if row:
             return row[column]
 

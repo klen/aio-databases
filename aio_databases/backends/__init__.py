@@ -6,13 +6,16 @@ import abc
 import asyncio
 from urllib.parse import SplitResult, parse_qsl
 
+from ..record import Record
+
 
 BACKENDS = {}
 
 
 class ABCDabaseBackend(abc.ABC):
 
-    name: str
+    name: t.ClassVar[str]
+    record_cls = Record
 
     def __init__(self, url: SplitResult, **options):
         self.url = url
@@ -84,11 +87,11 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def fetch(self, query: str, *args, **params) -> t.List[t.Tuple]:
+    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def fetchrow(self, query: str, *args, **params) -> t.Optional[t.Tuple]:
+    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
         raise NotImplementedError
 
     @abc.abstractmethod

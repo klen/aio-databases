@@ -6,6 +6,7 @@ from uuid import uuid4
 from aiomysql import Pool, Connection, create_pool
 
 from . import ABCDabaseBackend, ABCConnection, ABCTransaction
+from ..record import Record
 
 
 class MysqlBackend(ABCDabaseBackend):
@@ -67,27 +68,32 @@ class MysqlConnection(ABCConnection):
         finally:
             await cursor.close()
 
-    async def fetch(self, query: str, *args, **params) -> t.List[t.Tuple]:
+    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, args)
-            res = await cursor.fetchall()
-            return list(res)
+            rows = await cursor.fetchall()
+            desc = cursor.description
+            return [Record(row, desc) for row in rows]
 
         finally:
             await cursor.close()
 
-    async def fetchrow(self, query: str, *args, **params) -> t.Optional[t.Tuple]:
+    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, args)
-            return await cursor.fetchone()
+            row = await cursor.fetchone()
+            if row is None:
+                return row
+
+            return Record(row, cursor.description)
 
         finally:
             await cursor.close()
 
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
-        res = await self.fetchrow(query, *args, **params)
+        res = await self.fetchone(query, *args, **params)
         if res:
             res = res[column]
         return res

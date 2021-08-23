@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing as t
 
-from asyncpg import create_pool, Connection, Pool
+from asyncpg import create_pool, Connection, Pool, Record
 
 from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
@@ -10,6 +10,7 @@ from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 class PostgresBackend(ABCDabaseBackend):
 
     name = 'postgresql'
+    record_cls = Record
     pool: t.Optional[Pool] = None
 
     def connection(self) -> PostgresConnection:
@@ -52,15 +53,13 @@ class PostgresConnection(ABCConnection):
         conn: Connection = self.conn
         return await conn.executemany(query, args, **params)
 
-    async def fetch(self, query: str, *args, **params) -> t.List[t.Tuple]:
+    async def fetchall(self, query: str, *args, **params) -> t.List[Record]:
         conn: Connection = self.conn
-        res = await conn.fetch(query, *args, **params)
-        return [tuple(r.values()) for r in res]
+        return await conn.fetch(query, *args, **params)
 
-    async def fetchrow(self, query: str, *args, **params) -> t.Optional[t.Tuple]:
+    async def fetchone(self, query: str, *args, **params) -> t.Optional[Record]:
         conn: Connection = self.conn
-        res = await conn.fetchrow(query, *args, **params)
-        return tuple(res.values())
+        return await conn.fetchrow(query, *args, **params)
 
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
         conn: Connection = self.conn

@@ -16,11 +16,12 @@ async def test_base(db):
 
     await db.executemany('select $1', '1', '2', '3')
 
-    res = await db.fetch('select 1')
-    assert res == [(1,)]
+    res = await db.fetchall('select (2 * $1) res', 2)
+    assert res == [(4,)]
 
-    res = await db.fetchrow('select 1')
-    assert res == (1,)
+    res = await db.fetchone('select (2 * $1) res', 2)
+    assert res == (4,)
+    assert isinstance(res, db.backend.record_cls)
 
     res = await db.fetchval('select 2 + $1', 2)
     assert res == 4
@@ -45,7 +46,7 @@ async def test_db(db, engine, users, addresses, caplog):
 
             await trans2.rollback()
 
-    res = await db.fetch(users.select())
+    res = await db.fetchall(users.select())
     assert res
     assert res == [(1, 'jim', 'Jim Jones')]
 

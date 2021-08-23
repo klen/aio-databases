@@ -22,17 +22,25 @@ async def test_base(db):
 
     await db.executemany('select %s', '1', '2', '3')
 
-    res = await db.fetch('select 1')
-    assert res == [(1,)]
+    res = await db.fetchall('select (2 * %s) res', 2)
+    assert res == [(4,)]
 
-    res = await db.fetchrow('select 1')
-    assert res == (1,)
+    res = await db.fetchone('select (2 * %s) res', 2)
+    assert res == (4,)
+    assert isinstance(res, db.backend.record_cls)
 
     res = await db.fetchval('select 2 + %s', 2)
     assert res == 4
 
 
 async def test_db(db, engine, users, addresses, caplog):
+    try:
+        await db.execute(DropTable(users).compile(engine))
+    except Exception:
+        pass
+
+    Record = db.backend.record_cls
+
     await db.execute(CreateTable(users).compile(engine))
 
     async with db.transaction() as main_trans:
@@ -51,8 +59,8 @@ async def test_db(db, engine, users, addresses, caplog):
 
             await trans2.rollback()
 
-    res = await db.fetch(users.select())
+    res = await db.fetchall(users.select())
     assert res
-    assert res == [(1, 'jim', 'Jim Jones')]
+    assert res == [Record.from_dict({'id': 1, 'name': 'jim', 'fullname': 'Jim Jones'})]
 
     await db.execute(DropTable(users).compile(engine))

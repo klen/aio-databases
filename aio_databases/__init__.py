@@ -82,15 +82,15 @@ class Database:
         async with conn._lock:
             return await conn.executemany(f"{query}", *args, **params)
 
-    async def fetch(self, query: t.Any, *args, **params) -> t.List[t.Tuple]:
+    async def fetchall(self, query: t.Any, *args, **params) -> t.List[t.Mapping]:
         conn = await self.connection.acquire()
         async with conn._lock:
-            return await conn.fetch(f"{query}", *args, **params)
+            return await conn.fetchall(f"{query}", *args, **params)
 
-    async def fetchrow(self, query: t.Any, *args, **params) -> t.Optional[t.Tuple]:
+    async def fetchone(self, query: t.Any, *args, **params) -> t.Optional[t.Mapping]:
         conn = await self.connection.acquire()
         async with conn._lock:
-            return await conn.fetchrow(f"{query}", *args, **params)
+            return await conn.fetchone(f"{query}", *args, **params)
 
     async def fetchval(self, query: t.Any, *args, column: t.Any = 0, **params) -> t.Any:
         conn = await self.connection.acquire()

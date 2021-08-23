@@ -31,6 +31,26 @@ $ pip install aio-databases[mysql]
 
 ## Usage
 
+```python
+    from aio_databases import Database
+
+    db = Database('sqlite:///:memory:')
+
+    await db.execute('select $1', '1')
+    await db.executemany('select $1', '1', '2', '3')
+
+    res = await db.fetchall('select (2 * $1) res', 2)
+    assert res == [(4,)]
+
+    res = await db.fetchone('select (2 * $1) res', 2)
+    assert res == (4,)
+    assert isinstance(res, db.backend.record_cls)
+
+    res = await db.fetchval('select 2 * $1', 2)
+    assert res == 4
+
+```
+
 ## Bug tracker
 
 If you have any suggestions, bug reports or annoyances please report them to
