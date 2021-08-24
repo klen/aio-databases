@@ -1,6 +1,6 @@
 import pytest
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
+from pypika_orm import Manager, Model, fields
 
 
 @pytest.fixture(scope='session')
@@ -10,31 +10,24 @@ def aiolib():
 
 
 @pytest.fixture
-def engine(db):
-    return create_engine(db.url, echo=True)
+def dialect():
+    return 'sqllite'
 
 
 @pytest.fixture
-def metadata(engine):
-    meta = MetaData()
-    return meta
+def manager(dialect):
+    return Manager(dialect=dialect)
 
 
 @pytest.fixture
-def users(metadata):
-    return Table(
-        'users', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(length=256)),
-        Column('fullname', String(length=256)),
-    )
+def User():
 
+    class User(Model):
+        id = fields.Auto()
+        name = fields.Varchar()
+        fullname = fields.Varchar()
 
-@pytest.fixture
-def addresses(metadata):
-    return Table(
-        'addresses', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('user_id', None, ForeignKey('users.id')),
-        Column('email_address', String(length=256), nullable=False)
-    )
+        class Meta:
+            primary_key = 'id',
+
+    return User

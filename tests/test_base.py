@@ -16,8 +16,7 @@ def test_database():
     with pytest.raises(ValueError):
         db = Database('unknown://db.sqlite')
 
-    db = Database('sqlite://db.sqlite')
-    assert db
+    assert Database('sqlite://db.sqlite')
 
 
 def test_record():

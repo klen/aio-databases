@@ -1,7 +1,5 @@
 import pytest
 
-from sqlalchemy.schema import CreateTable
-
 
 @pytest.fixture
 async def db():
@@ -27,30 +25,41 @@ async def test_base(db):
     assert res == 4
 
 
-async def test_db(db, engine, users, addresses, caplog):
-    Record = db.backend.record_cls
+async def test_db(db, User, manager):
+    UserManager = manager(User)
 
-    await db.execute(CreateTable(users).compile(engine))
+    await db.execute(UserManager.drop_table().if_exists())
+    await db.execute(UserManager.create_table())
 
     async with db.transaction() as main_trans:
         assert main_trans
 
-        res = await db.execute(
-            'INSERT INTO users (name, fullname) VALUES (?, ?)', 'jim', 'Jim Jones')
+        res = await db.execute(UserManager.insert(name='jim', fullname='Jim Jones'))
         assert res
 
         async with db.transaction() as trans2:
             assert trans2
 
-            res = await db.execute(
-                'INSERT INTO users (name, fullname) VALUES (?, ?)', 'tom', 'Tom Smith')
+            res = await db.execute(UserManager.insert(name='tom', fullname='Tom Smith'))
             assert res
+
+            res = await db.fetchall(UserManager.select())
+            assert res
+            assert len(res) == 2
 
             await trans2.rollback()
 
-    res = await db.fetchall(users.select())
+    res = await db.fetchall(UserManager.select())
     assert res
-    assert res == [Record.from_dict({'id': 1, 'name': 'jim', 'fullname': 'Jim Jones'})]
+    assert len(res) == 1
 
-    res = await db.fetchone(users.select().where(users.c.id == 100), 100)
+    [user] = res
+    assert user
+    assert user['id'] == 1
+    assert user['name'] == 'jim'
+    assert user['fullname'] == 'Jim Jones'
+
+    res = await db.fetchone(UserManager.select().where(User.id == 100))
     assert res is None
+
+    await db.execute(UserManager.drop_table())

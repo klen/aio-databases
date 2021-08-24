@@ -1,6 +1,9 @@
 import pytest
 
-from sqlalchemy.schema import CreateTable, DropTable
+
+@pytest.fixture
+async def dialect():
+    return 'postgressql'
 
 
 @pytest.fixture
@@ -27,27 +30,41 @@ async def test_base(db):
     assert res == 4
 
 
-async def test_db(db, engine, users, addresses, caplog):
-    await db.execute(CreateTable(users).compile(engine))
+async def test_db(db, User, manager):
+    UserManager = manager(User)
+
+    await db.execute(UserManager.drop_table().if_exists())
+    await db.execute(UserManager.create_table())
 
     async with db.transaction() as main_trans:
         assert main_trans
 
-        res = await db.execute(
-            'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'jim', 'Jim Jones')
+        res = await db.execute(UserManager.insert(name='jim', fullname='Jim Jones'))
         assert res
 
         async with db.transaction() as trans2:
             assert trans2
 
-            res = await db.execute(
-                'INSERT INTO users (name, fullname) VALUES ($1, $2)', 'tom', 'Tom Smith')
+            res = await db.execute(UserManager.insert(name='tom', fullname='Tom Smith'))
             assert res
+
+            res = await db.fetchall(UserManager.select())
+            assert res
+            assert len(res) == 2
 
             await trans2.rollback()
 
-    res = await db.fetchall(users.select())
+    res = await db.fetchall(UserManager.select())
     assert res
-    assert res == [(1, 'jim', 'Jim Jones')]
+    assert len(res) == 1
 
-    await db.execute(DropTable(users).compile(engine))
+    [user] = res
+    assert user
+    assert user['id'] == 1
+    assert user['name'] == 'jim'
+    assert user['fullname'] == 'Jim Jones'
+
+    res = await db.fetchone(UserManager.select().where(User.id == 100))
+    assert res is None
+
+    await db.execute(UserManager.drop_table().if_exists())
