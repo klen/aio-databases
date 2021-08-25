@@ -2,11 +2,18 @@ import pytest
 
 
 @pytest.fixture
-async def db():
+async def db(User, Comment, manager):
     from aio_databases import Database
 
+    UserManager = manager(User)
+    CommentManager = manager(Comment)
+
     async with Database('sqlite:///:memory:') as db:
+        await db.execute(UserManager.create_table().if_not_exists())
+        await db.execute(CommentManager.create_table().if_not_exists())
         yield db
+        await db.execute(UserManager.drop_table().if_exists())
+        await db.execute(CommentManager.drop_table().if_exists())
 
 
 async def test_base(db):
@@ -27,9 +34,6 @@ async def test_base(db):
 
 async def test_db(db, User, manager):
     UserManager = manager(User)
-
-    await db.execute(UserManager.drop_table().if_exists())
-    await db.execute(UserManager.create_table())
 
     async with db.transaction() as main_trans:
         assert main_trans
@@ -62,4 +66,9 @@ async def test_db(db, User, manager):
     res = await db.fetchone(UserManager.select().where(User.id == 100))
     assert res is None
 
-    await db.execute(UserManager.drop_table())
+
+@pytest.mark.skip
+async def test_fetchall(db, manager, User, Comment):
+    qs = manager(Comment).select(Comment, User).join(Comment).on(Comment.user_id == User.id)
+    res = await db.fetchall(qs)
+    assert res

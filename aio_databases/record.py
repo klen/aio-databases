@@ -7,26 +7,30 @@ from collections.abc import Mapping
 
 class Record(Mapping):
 
-    __slots__ = '_row', '_map'
+    __slots__ = '_values', '_keys'
 
-    def __init__(self, row: t.Tuple, description: t.Sequence[t.Sequence]):
-        self._row = row
-        self._map = dict((name, val) for (name, *_), val in zip(description, row))
+    def __init__(self, values: t.Tuple, description: t.Sequence[t.Sequence]):
+        self._values = values
+        self._keys = tuple(d[0] for d in description)
 
     def __len__(self) -> int:
-        return len(self._row)
+        return len(self._values)
 
     def __getitem__(self, idx: t.Union[str, int]) -> t.Any:
         if isinstance(idx, int):
-            return self._row[idx]
+            return self._values[idx]
 
-        return self._map[idx]
+        for key, value in self.items():
+            if key == idx:
+                return value
+
+        raise KeyError
 
     def __contains__(self, idx) -> bool:
-        return idx in self._map
+        return idx in self._keys
 
     def __iter__(self) -> t.Iterator:
-        for val in self._row:
+        for val in self._values:
             yield val
 
     def __str__(self) -> str:
@@ -38,17 +42,17 @@ class Record(Mapping):
 
     @classmethod
     def from_dict(cls, val: t.Dict) -> Record:
-        names, row = zip(*val.items())
-        return cls(row, [[name] for name in names])
+        keys, values = zip(*val.items())
+        return cls(values, [[name] for name in keys])
 
     def values(self) -> t.Tuple:  # type: ignore
-        return self._row
+        return self._values
 
     def keys(self) -> t.Tuple:  # type: ignore
-        return tuple(self._map.keys())
+        return self._keys
 
-    def items(self) -> t.Tuple:  # type: ignore
-        return tuple(zip(self._map.keys(), self._row))
+    def items(self) -> zip:  # type: ignore
+        return zip(self._keys, self._values)
 
     def __eq__(self, obj: t.Any):
-        return self._row == tuple(obj)
+        return self._values == tuple(obj)

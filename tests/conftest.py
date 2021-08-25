@@ -27,7 +27,16 @@ def User():
         name = fields.Varchar()
         fullname = fields.Varchar()
 
-        class Meta:
-            primary_key = 'id',
-
     return User
+
+
+@pytest.fixture
+def Comment(User):
+
+    class Comment(Model):
+        id = fields.Auto()
+        body = fields.Varchar()
+
+        user_id = fields.ForeignKey(User.id)
+
+    return Comment

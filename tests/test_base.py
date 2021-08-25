@@ -32,9 +32,15 @@ def test_record():
     assert 'value' not in rec
     assert rec.values() == (1, 'test')
     assert rec.keys() == ('id', 'name')
-    assert rec.items() == (('id', 1), ('name', 'test'))
+    assert tuple(rec.items()) == (('id', 1), ('name', 'test'))
     assert rec == (1, 'test')
 
     assert rec == Record.from_dict({'id': 1, 'name': 'test'})
     assert str(rec) == "id=1 name='test'"
     assert repr(rec) == "<Record id=1 name='test'>"
+
+    rec = Record((1, 'test', 2, 'test2'), [['id'], ['name'], ['id'], ['name']])
+    assert list(rec) == [1, 'test', 2, 'test2']
+    assert list(rec.values()) == [1, 'test', 2, 'test2']
+    assert list(rec.keys()) == ['id', 'name', 'id', 'name']
+    assert str(rec) == "id=1 name='test' id=2 name='test2'"
