@@ -51,7 +51,7 @@ $ pip install aio-databases[mysql]
         await db.disconnect()
 
     # As an alternative users are able to use the database
-    # as a async context manager
+    # as an async context manager
 
     async with db:
         await my_main_coroutine()
