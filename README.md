@@ -31,24 +31,58 @@ $ pip install aio-databases[mysql]
 
 ## Usage
 
+* Init a database
+
 ```python
     from aio_databases import Database
 
     db = Database('sqlite:///:memory:')
+```
 
+* Prepare the database to work
+
+```python
+    async def my_app_starts():
+        # Initialize a database's pool
+        await db.connect()
+
+    async def my_app_ends():
+        # Close pool/connections
+        await db.disconnect()
+
+    # As an alternative users are able to use the database
+    # as a async context manager
+
+    async with db:
+        await my_main_coroutine()
+```
+
+* Run SQL queries
+
+```python
     await db.execute('select $1', '1')
     await db.executemany('select $1', '1', '2', '3')
 
-    res = await db.fetchall('select (2 * $1) res', 2)
-    assert res == [(4,)]
+    records = await db.fetchall('select (2 * $1) res', 2)
+    assert records == [(4,)]
 
-    res = await db.fetchone('select (2 * $1) res', 2)
-    assert res == (4,)
-    assert isinstance(res, db.backend.record_cls)
+    record = await db.fetchone('select (2 * $1) res', 2)
+    assert record == (4,)
+    assert record['res'] == 4
 
-    res = await db.fetchval('select 2 * $1', 2)
-    assert res == 4
+    result = await db.fetchval('select 2 * $1', 2)
+    assert result == 4
+```
 
+* Use transactions
+
+```python
+    async with db.transaction() as trans1:
+        # do some work ...
+
+        async with db.transaction() as trans2:
+            # do some work ...
+            await trans2.rollback()
 ```
 
 ## Bug tracker
