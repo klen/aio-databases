@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 from .backends import BACKENDS, ABCDatabaseBackend, ABCConnection, ABCTransaction
 
 
-__version__ = '0.0.14'
+__version__ = '0.0.15'
 
 
 logger = logging.getLogger('aio-databases')
