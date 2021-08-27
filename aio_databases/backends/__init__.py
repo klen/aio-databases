@@ -12,49 +12,63 @@ from ..record import Record
 BACKENDS = []
 
 
-class ABCDatabaseBackend(abc.ABC):
+class ABCTransaction(abc.ABC):
 
-    name: t.ClassVar[str]
-    db_type: t.ClassVar[str]
-    record_cls = Record
+    is_finished: bool = False
 
-    def __init__(self, url: SplitResult, **options):
-        self.url = url
-        self.options = dict(parse_qsl(url.query), **options)
-
-    def __init_subclass__(cls, *args, **kwargs):
-        """Register a backend."""
-        BACKENDS.append(cls)
-        return super().__init_subclass__(*args, **kwargs)
-
-    def __str__(self):
-        return self.db_type
-
-    def __repr__(self):
-        return f"<Backend {self}>"
+    def __init__(self, connection: ABCConnection):
+        self.connection = connection
 
     @abc.abstractmethod
-    async def connect(self) -> None:
+    async def _start(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def disconnect(self) -> None:
+    async def _commit(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def connection(self) -> ABCConnection:
+    async def _rollback(self):
         raise NotImplementedError
 
-    @abc.abstractmethod
-    async def acquire(self) -> t.Any:
-        raise NotImplementedError
+    async def __aenter__(self):
+        await self.start()
+        return self
 
-    @abc.abstractmethod
-    async def release(self, conn: t.Any) -> None:
-        raise NotImplementedError
+    async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
+        if not self.is_finished:
+            if exc_type is not None:
+                await self.rollback()
+            else:
+                await self.commit()
+
+    async def start(self):
+        connection = self.connection
+        if not connection.is_ready:
+            await connection.acquire()
+
+        async with connection._lock:
+            await self._start()
+            connection.transactions.append(self)
+
+    async def commit(self):
+        connection = self.connection
+        async with connection._lock:
+            await self._commit()
+            connection.transactions.remove(self)
+            self.is_finished = True
+
+    async def rollback(self):
+        connection = self.connection
+        async with connection._lock:
+            await self._rollback()
+            connection.transactions.remove(self)
+            self.is_finished = True
 
 
 class ABCConnection(abc.ABC):
+
+    transaction_cls: t.ClassVar[t.Type[ABCTransaction]]
 
     def __init__(self, database: ABCDatabaseBackend):
         self.database = database
@@ -110,82 +124,71 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
 
     def transaction(self) -> ABCTransaction:
-        raise NotImplementedError
+        return self.transaction_cls(self)
 
 
-class ABCTransaction(abc.ABC):
+class ABCDatabaseBackend(abc.ABC):
 
-    is_finished: bool = False
+    name: t.ClassVar[str]
+    db_type: t.ClassVar[str]
 
-    def __init__(self, connection: ABCConnection):
-        self.connection = connection
+    record_cls = Record
+    connection_cls: t.ClassVar[t.Type[ABCConnection]]
+
+    def __init__(self, url: SplitResult, **options):
+        self.url = url
+        self.options = dict(parse_qsl(url.query), **options)
+
+    def __init_subclass__(cls, *args, **kwargs):
+        """Register a backend."""
+        BACKENDS.append(cls)
+        return super().__init_subclass__(*args, **kwargs)
+
+    def __str__(self):
+        return self.db_type
+
+    def __repr__(self):
+        return f"<Backend {self}>"
 
     @abc.abstractmethod
-    async def _start(self):
+    async def connect(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _commit(self):
+    async def disconnect(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _rollback(self):
+    async def acquire(self) -> t.Any:
         raise NotImplementedError
 
-    async def __aenter__(self):
-        await self.start()
-        return self
+    @abc.abstractmethod
+    async def release(self, conn: t.Any) -> None:
+        raise NotImplementedError
 
-    async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
-        if not self.is_finished:
-            if exc_type is not None:
-                await self.rollback()
-            else:
-                await self.commit()
-
-    async def start(self):
-        connection = self.connection
-        if not connection.is_ready:
-            await connection.acquire()
-
-        async with connection._lock:
-            await self._start()
-            connection.transactions.append(self)
-
-    async def commit(self):
-        connection = self.connection
-        async with connection._lock:
-            await self._commit()
-            connection.transactions.remove(self)
-            self.is_finished = True
-
-    async def rollback(self):
-        connection = self.connection
-        async with connection._lock:
-            await self._rollback()
-            connection.transactions.remove(self)
-            self.is_finished = True
+    def connection(self) -> ABCConnection:
+        return self.connection_cls(self)
 
 
 #  Import available backends
 #  -------------------------
 
 try:
-    from ._aiosqlite import *  # noqa
+    from ._aiosqlite import Backend as AIOSQLiteBackend  # noqa
 except ImportError:
     pass
 
 try:
-    from ._asyncpg import *  # noqa
+    from ._asyncpg import Backend as AsyncPGBackend  # noqa
 except ImportError:
     pass
 
 try:
-    from ._aiopg import *  # noqa
+    from ._aiopg import Backend as AIOPGBackend  # noqa
 except ImportError:
     pass
 
 try:
-    from ._aiomysql import *  # noqa
+    from ._aiomysql import Backend as AIOMySQLBackend  # noqa
 except ImportError:
     pass

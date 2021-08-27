@@ -9,38 +9,36 @@ from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class Backend(ABCDatabaseBackend):
+class Transaction(ABCTransaction):
 
-    name = 'aiopg'
-    db_type = 'postgresql'
-    pool: t.Optional[aiopg.Pool] = None
+    savepoint: t.Optional[str] = None
 
-    def connection(self) -> Connection:
-        return Connection(self)
+    async def _start(self) -> t.Any:
+        connection = self.connection
+        if connection.transactions:
+            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
+            return await connection.execute(f"SAVEPOINT {savepoint}")
 
-    async def connect(self) -> None:
-        dsn = self.url._replace(scheme='postgresql').geturl()
-        self.pool = await aiopg.create_pool(dsn, **self.options)
+        return await connection.execute("BEGIN")
 
-    async def disconnect(self) -> None:
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
-        self.pool = None
-        pool.close()
-        await pool.wait_closed()
+    async def _commit(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
 
-    async def acquire(self) -> aiopg.Connection:
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
-        return await pool.acquire()
+        return await self.connection.execute("COMMIT")
 
-    async def release(self, conn: aiopg.Connection):
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
-        await pool.release(conn)
+    async def _rollback(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+
+        return await self.connection.execute("ROLLBACK")
 
 
 class Connection(ABCConnection):
+
+    transaction_cls = Transaction
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         cursor = await self.conn.cursor()
@@ -92,32 +90,32 @@ class Connection(ABCConnection):
             res = res[column]
         return res
 
-    def transaction(self) -> Transaction:
-        return Transaction(self)
 
+class Backend(ABCDatabaseBackend):
 
-class Transaction(ABCTransaction):
+    name = 'aiopg'
+    db_type = 'postgresql'
+    connection_cls = Connection
 
-    savepoint: t.Optional[str] = None
+    pool: t.Optional[aiopg.Pool] = None
 
-    async def _start(self) -> t.Any:
-        connection = self.connection
-        if connection.transactions:
-            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
-            return await connection.execute(f"SAVEPOINT {savepoint}")
+    async def connect(self) -> None:
+        dsn = self.url._replace(scheme='postgresql').geturl()
+        self.pool = await aiopg.create_pool(dsn, **self.options)
 
-        return await connection.execute("BEGIN")
+    async def disconnect(self) -> None:
+        pool = self.pool
+        assert pool is not None, "Database is not connected"
+        self.pool = None
+        pool.close()
+        await pool.wait_closed()
 
-    async def _commit(self) -> t.Any:
-        savepoint = self.savepoint
-        if savepoint:
-            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
+    async def acquire(self) -> aiopg.Connection:
+        pool = self.pool
+        assert pool is not None, "Database is not connected"
+        return await pool.acquire()
 
-        return await self.connection.execute("COMMIT")
-
-    async def _rollback(self) -> t.Any:
-        savepoint = self.savepoint
-        if savepoint:
-            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
-
-        return await self.connection.execute("ROLLBACK")
+    async def release(self, conn: aiopg.Connection):
+        pool = self.pool
+        assert pool is not None, "Database is not connected"
+        await pool.release(conn)

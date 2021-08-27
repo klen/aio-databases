@@ -9,30 +9,36 @@ from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class Backend(ABCDatabaseBackend):
+class Transaction(ABCTransaction):
 
-    name = 'aiosqlite'
-    db_type = 'sqlite'
+    savepoint: t.Optional[str] = None
 
-    async def connect(self) -> None:
-        pass
+    async def _start(self) -> t.Any:
+        connection = self.connection
+        if connection.transactions:
+            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
+            return await connection.execute(f"SAVEPOINT {savepoint}")
 
-    async def disconnect(self) -> None:
-        pass
+        return await connection.execute("BEGIN")
 
-    def connection(self) -> Connection:
-        return Connection(self)
+    async def _commit(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
 
-    async def acquire(self) -> aiosqlite.Connection:
-        conn = aiosqlite.connect(database=self.url.netloc, isolation_level=None, **self.options)
-        await conn.__aenter__()
-        return conn
+        return await self.connection.execute("COMMIT")
 
-    async def release(self, conn: aiosqlite.Connection) -> None:
-        await conn.__aexit__(None, None, None)
+    async def _rollback(self) -> t.Any:
+        savepoint = self.savepoint
+        if savepoint:
+            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+
+        return await self.connection.execute("ROLLBACK")
 
 
 class Connection(ABCConnection):
+
+    transaction_cls = Transaction
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         async with self.conn.cursor() as cursor:
@@ -64,32 +70,23 @@ class Connection(ABCConnection):
         if row:
             return row[column]
 
-    def transaction(self) -> Transaction:
-        return Transaction(self)
 
+class Backend(ABCDatabaseBackend):
 
-class Transaction(ABCTransaction):
+    name = 'aiosqlite'
+    db_type = 'sqlite'
+    connection_cls = Connection
 
-    savepoint: t.Optional[str] = None
+    async def connect(self) -> None:
+        pass
 
-    async def _start(self) -> t.Any:
-        connection = self.connection
-        if connection.transactions:
-            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
-            return await connection.execute(f"SAVEPOINT {savepoint}")
+    async def disconnect(self) -> None:
+        pass
 
-        return await connection.execute("BEGIN")
+    async def acquire(self) -> aiosqlite.Connection:
+        conn = aiosqlite.connect(database=self.url.netloc, isolation_level=None, **self.options)
+        await conn.__aenter__()
+        return conn
 
-    async def _commit(self) -> t.Any:
-        savepoint = self.savepoint
-        if savepoint:
-            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
-
-        return await self.connection.execute("COMMIT")
-
-    async def _rollback(self) -> t.Any:
-        savepoint = self.savepoint
-        if savepoint:
-            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
-
-        return await self.connection.execute("ROLLBACK")
+    async def release(self, conn: aiosqlite.Connection) -> None:
+        await conn.__aexit__(None, None, None)
