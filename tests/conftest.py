@@ -19,7 +19,6 @@ def dialect():
 def setup_logging():
     logger = logging.getLogger('aio-databases')
     logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler())
 
 
 @pytest.fixture

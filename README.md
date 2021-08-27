@@ -20,12 +20,18 @@ PostgreSQL, MySQL).
 $ pip install aio-databases
 ```
 
-You can install the required database drivers with:
+You have to choose and install the required database drivers with:
 
 ```shell
-$ pip install aio-databases[sqlite]
-$ pip install aio-databases[postgresql]
-$ pip install aio-databases[mysql]
+# To support SQLite
+$ pip install aio-databases[aiosqlite]
+
+# To support MySQL
+$ pip install aio-databases[aiomysql]
+
+# To support PostgreSQL (choose one)
+$ pip install aio-databases[aiopg]
+$ pip install aio-databases[asyncpg]
 ```
 
 

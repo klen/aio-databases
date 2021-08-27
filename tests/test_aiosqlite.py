@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture(scope='module')
 def db_url():
-    return 'sqlite:///:memory:'
+    return 'aiosqlite:///:memory:'
 
 
 @pytest.fixture(autouse=True)

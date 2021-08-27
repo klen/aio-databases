@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture(scope='module')
 def db_url():
-    return 'postgresql://test:test@localhost:5432/tests'
+    return 'asyncpg://test:test@localhost:5432/tests'
 
 
 @pytest.fixture(scope='module')

@@ -3,22 +3,12 @@ import pytest
 
 @pytest.fixture(scope='module')
 def db_url():
-    return 'mysql://root@127.0.0.1:3306/tests'
+    return 'aiopg://test:test@localhost:5432/tests'
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 async def dialect():
-    return 'mysql'
-
-
-async def test_transaction(db_url):
-    from aio_databases import Database
-
-    async with Database(db_url) as db:
-        async with db.transaction() as trans:
-            res = await db.fetchval('select 2 * %s', 2)
-            assert res == 4
-            await trans.commit()
+    return 'postgressql'
 
 
 async def test_base(db):
@@ -35,6 +25,16 @@ async def test_base(db):
 
     res = await db.fetchval('select 2 + %s', 2)
     assert res == 4
+
+
+async def test_transaction(db_url):
+    from aio_databases import Database
+
+    async with Database(db_url) as db:
+        async with db.transaction() as trans:
+            res = await db.fetchval('select 2 * %s', 2)
+            assert res == 4
+            await trans.commit()
 
 
 async def test_db(db, User, manager):

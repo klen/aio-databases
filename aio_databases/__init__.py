@@ -27,10 +27,13 @@ class Database:
     def __init__(self, url: str, *, logger: logging.Logger = logger, **options):
         parsed_url = urlsplit(url)
 
-        try:
-            backend_cls = BACKENDS[parsed_url.scheme]
-        except KeyError:
-            raise ValueError(f"Unsupported backend: {parsed_url.scheme}")
+        scheme = parsed_url.scheme
+        for backend_cls in BACKENDS:
+            if backend_cls.name == scheme or backend_cls.db_type == scheme:
+                break
+        else:
+            raise ValueError(
+                f"Unsupported backend: '{scheme}', please install a required database driver")
 
         self.url = url
         self.backend: ABCDatabaseBackend = backend_cls(parsed_url, **options)

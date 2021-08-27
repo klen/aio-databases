@@ -9,12 +9,13 @@ from urllib.parse import SplitResult, parse_qsl
 from ..record import Record
 
 
-BACKENDS = {}
+BACKENDS = []
 
 
 class ABCDatabaseBackend(abc.ABC):
 
     name: t.ClassVar[str]
+    db_type: t.ClassVar[str]
     record_cls = Record
 
     def __init__(self, url: SplitResult, **options):
@@ -23,8 +24,14 @@ class ABCDatabaseBackend(abc.ABC):
 
     def __init_subclass__(cls, *args, **kwargs):
         """Register a backend."""
-        super().__init_subclass__(*args, **kwargs)
-        BACKENDS[cls.name] = cls
+        BACKENDS.append(cls)
+        return super().__init_subclass__(*args, **kwargs)
+
+    def __str__(self):
+        return self.db_type
+
+    def __repr__(self):
+        return f"<Backend {self}>"
 
     @abc.abstractmethod
     async def connect(self) -> None:
@@ -160,14 +167,25 @@ class ABCTransaction(abc.ABC):
             self.is_finished = True
 
 
-from .sqlite import *  # noqa
+#  Import available backends
+#  -------------------------
 
 try:
-    from .postgres import *  # noqa
+    from ._aiosqlite import *  # noqa
 except ImportError:
     pass
 
 try:
-    from .mysql import *  # noqa
+    from ._asyncpg import *  # noqa
+except ImportError:
+    pass
+
+try:
+    from ._aiopg import *  # noqa
+except ImportError:
+    pass
+
+try:
+    from ._aiomysql import *  # noqa
 except ImportError:
     pass

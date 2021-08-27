@@ -5,18 +5,25 @@ def test_backends():
     from aio_databases.backends import BACKENDS
 
     assert BACKENDS
-    assert BACKENDS['sqlite']
-    assert BACKENDS['postgresql']
-    assert BACKENDS['mysql']
+    db_types = set(b.db_type for b in BACKENDS)
+    assert 'mysql' in db_types
+    assert 'sqlite' in db_types
+    assert 'postgresql' in db_types
 
 
 def test_database():
     from aio_databases import Database
 
     with pytest.raises(ValueError):
-        db = Database('unknown://db.sqlite')
+        Database('unknown://db.sqlite')
 
+    assert Database('mysql://db.sqlite')
     assert Database('sqlite://db.sqlite')
+    assert Database('postgresql://db.sqlite')
+
+    assert Database('aiomysql://db.sqlite')
+    assert Database('aiosqlite://db.sqlite')
+    assert Database('asyncpg://db.sqlite')
 
 
 def test_record():

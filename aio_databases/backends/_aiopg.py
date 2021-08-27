@@ -3,30 +3,24 @@ from __future__ import annotations
 import typing as t
 from uuid import uuid4
 
-from aiomysql import Pool, Connection, create_pool
+import aiopg
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class MysqlBackend(ABCDatabaseBackend):
+class Backend(ABCDatabaseBackend):
 
-    name = 'mysql'
-    pool: t.Optional[Pool] = None
+    name = 'aiopg'
+    db_type = 'postgresql'
+    pool: t.Optional[aiopg.Pool] = None
 
-    def connection(self) -> MysqlConnection:
-        return MysqlConnection(self)
+    def connection(self) -> Connection:
+        return Connection(self)
 
     async def connect(self) -> None:
-        self.pool = await create_pool(
-            **self.options,
-            host=self.url.hostname,
-            port=self.url.port,
-            user=self.url.username,
-            password=self.url.password,
-            db=self.url.path.strip('/'),
-            autocommit=True,
-        )
+        dsn = self.url._replace(scheme='postgresql').geturl()
+        self.pool = await aiopg.create_pool(dsn, **self.options)
 
     async def disconnect(self) -> None:
         pool = self.pool
@@ -35,18 +29,18 @@ class MysqlBackend(ABCDatabaseBackend):
         pool.close()
         await pool.wait_closed()
 
-    async def acquire(self) -> Connection:
+    async def acquire(self) -> aiopg.Connection:
         pool = self.pool
         assert pool is not None, "Database is not connected"
         return await pool.acquire()
 
-    async def release(self, conn: Connection):
+    async def release(self, conn: aiopg.Connection):
         pool = self.pool
         assert pool is not None, "Database is not connected"
         await pool.release(conn)
 
 
-class MysqlConnection(ABCConnection):
+class Connection(ABCConnection):
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         cursor = await self.conn.cursor()
@@ -57,7 +51,7 @@ class MysqlConnection(ABCConnection):
             return cursor.lastrowid
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def executemany(self, query: str, *args, **params) -> t.Any:
         cursor = await self.conn.cursor()
@@ -66,7 +60,7 @@ class MysqlConnection(ABCConnection):
                 await cursor.execute(query, args_)
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
         cursor = await self.conn.cursor()
@@ -77,7 +71,7 @@ class MysqlConnection(ABCConnection):
             return [Record(row, desc) for row in rows]
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
@@ -90,7 +84,7 @@ class MysqlConnection(ABCConnection):
             return Record(row, cursor.description)
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
         res = await self.fetchone(query, *args, **params)
@@ -98,11 +92,11 @@ class MysqlConnection(ABCConnection):
             res = res[column]
         return res
 
-    def transaction(self) -> MysqlTransaction:
-        return MysqlTransaction(self)
+    def transaction(self) -> Transaction:
+        return Transaction(self)
 
 
-class MysqlTransaction(ABCTransaction):
+class Transaction(ABCTransaction):
 
     savepoint: t.Optional[str] = None
 
@@ -112,18 +106,18 @@ class MysqlTransaction(ABCTransaction):
             self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
             return await connection.execute(f"SAVEPOINT {savepoint}")
 
-        return await connection.conn.begin()
+        return await connection.execute("BEGIN")
 
     async def _commit(self) -> t.Any:
         savepoint = self.savepoint
         if savepoint:
             return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
 
-        return await self.connection.conn.commit()
+        return await self.connection.execute("COMMIT")
 
     async def _rollback(self) -> t.Any:
         savepoint = self.savepoint
         if savepoint:
             return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
 
-        return await self.connection.conn.rollback()
+        return await self.connection.execute("ROLLBACK")

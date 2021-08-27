@@ -9,9 +9,10 @@ from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class SqliteBackend(ABCDatabaseBackend):
+class Backend(ABCDatabaseBackend):
 
-    name = 'sqlite'
+    name = 'aiosqlite'
+    db_type = 'sqlite'
 
     async def connect(self) -> None:
         pass
@@ -19,8 +20,8 @@ class SqliteBackend(ABCDatabaseBackend):
     async def disconnect(self) -> None:
         pass
 
-    def connection(self) -> SQLiteConnection:
-        return SQLiteConnection(self)
+    def connection(self) -> Connection:
+        return Connection(self)
 
     async def acquire(self) -> aiosqlite.Connection:
         conn = aiosqlite.connect(database=self.url.netloc, isolation_level=None, **self.options)
@@ -31,7 +32,7 @@ class SqliteBackend(ABCDatabaseBackend):
         await conn.__aexit__(None, None, None)
 
 
-class SQLiteConnection(ABCConnection):
+class Connection(ABCConnection):
 
     async def execute(self, query: str, *args, **params) -> t.Any:
         async with self.conn.cursor() as cursor:
@@ -63,11 +64,11 @@ class SQLiteConnection(ABCConnection):
         if row:
             return row[column]
 
-    def transaction(self) -> SQLiteTransaction:
-        return SQLiteTransaction(self)
+    def transaction(self) -> Transaction:
+        return Transaction(self)
 
 
-class SQLiteTransaction(ABCTransaction):
+class Transaction(ABCTransaction):
 
     savepoint: t.Optional[str] = None
 
