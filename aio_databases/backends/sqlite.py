@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import aiosqlite
 
-from . import ABCDabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class SqliteBackend(ABCDabaseBackend):
+class SqliteBackend(ABCDatabaseBackend):
 
     name = 'sqlite'
 

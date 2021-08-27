@@ -5,11 +5,11 @@ from uuid import uuid4
 
 from aiomysql import Pool, Connection, create_pool
 
-from . import ABCDabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
 
 
-class MysqlBackend(ABCDabaseBackend):
+class MysqlBackend(ABCDatabaseBackend):
 
     name = 'mysql'
     pool: t.Optional[Pool] = None

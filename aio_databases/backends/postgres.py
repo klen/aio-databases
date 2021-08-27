@@ -5,10 +5,10 @@ import typing as t
 from asyncpg import create_pool, Connection, Pool, Record
 from asyncpg.transaction import Transaction
 
-from . import ABCDabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 
 
-class PostgresBackend(ABCDabaseBackend):
+class PostgresBackend(ABCDatabaseBackend):
 
     name = 'postgresql'
     record_cls = Record

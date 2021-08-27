@@ -12,7 +12,7 @@ from ..record import Record
 BACKENDS = {}
 
 
-class ABCDabaseBackend(abc.ABC):
+class ABCDatabaseBackend(abc.ABC):
 
     name: t.ClassVar[str]
     record_cls = Record
@@ -49,7 +49,7 @@ class ABCDabaseBackend(abc.ABC):
 
 class ABCConnection(abc.ABC):
 
-    def __init__(self, database: ABCDabaseBackend):
+    def __init__(self, database: ABCDatabaseBackend):
         self.database = database
         self.transactions: t.List[ABCTransaction] = []
         self._conn = None

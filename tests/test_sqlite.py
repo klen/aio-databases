@@ -6,19 +6,16 @@ def db_url():
     return 'sqlite:///:memory:'
 
 
-@pytest.fixture
-async def db(User, Comment, manager, db_url):
-    from aio_databases import Database
-
+@pytest.fixture(autouse=True)
+async def schema(User, Comment, manager, db):
     UserManager = manager(User)
     CommentManager = manager(Comment)
 
-    async with Database(db_url) as db:
-        await db.execute(UserManager.create_table().if_not_exists())
-        await db.execute(CommentManager.create_table().if_not_exists())
-        yield db
-        await db.execute(UserManager.drop_table().if_exists())
-        await db.execute(CommentManager.drop_table().if_exists())
+    await db.execute(UserManager.create_table().if_not_exists())
+    await db.execute(CommentManager.create_table().if_not_exists())
+    yield
+    await db.execute(UserManager.drop_table().if_exists())
+    await db.execute(CommentManager.drop_table().if_exists())
 
 
 async def test_transaction(db_url):

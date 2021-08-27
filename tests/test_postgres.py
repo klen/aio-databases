@@ -11,14 +11,6 @@ async def dialect():
     return 'postgressql'
 
 
-@pytest.fixture
-async def db(db_url):
-    from aio_databases import Database
-
-    async with Database(db_url) as db:
-        yield db
-
-
 async def test_transaction(db_url):
     from aio_databases import Database
 
