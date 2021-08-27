@@ -1,19 +1,34 @@
 import pytest
 
 
+@pytest.fixture(scope='module')
+def db_url():
+    return 'sqlite:///:memory:'
+
+
 @pytest.fixture
-async def db(User, Comment, manager):
+async def db(User, Comment, manager, db_url):
     from aio_databases import Database
 
     UserManager = manager(User)
     CommentManager = manager(Comment)
 
-    async with Database('sqlite:///:memory:') as db:
+    async with Database(db_url) as db:
         await db.execute(UserManager.create_table().if_not_exists())
         await db.execute(CommentManager.create_table().if_not_exists())
         yield db
         await db.execute(UserManager.drop_table().if_exists())
         await db.execute(CommentManager.drop_table().if_exists())
+
+
+async def test_transaction(db_url):
+    from aio_databases import Database
+
+    async with Database(db_url) as db:
+        async with db.transaction() as trans:
+            res = await db.fetchval('select 2 * $1', 2)
+            assert res == 4
+            await trans.commit()
 
 
 async def test_base(db):

@@ -1,17 +1,32 @@
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
+def db_url():
+    return 'postgresql://test:test@localhost:5432/tests'
+
+
+@pytest.fixture(scope='module')
 async def dialect():
     return 'postgressql'
 
 
 @pytest.fixture
-async def db():
+async def db(db_url):
     from aio_databases import Database
 
-    async with Database('postgresql://test:test@localhost:5432/tests') as db:
+    async with Database(db_url) as db:
         yield db
+
+
+async def test_transaction(db_url):
+    from aio_databases import Database
+
+    async with Database(db_url) as db:
+        async with db.transaction() as trans:
+            res = await db.fetchval('select 2 * $1', 2)
+            assert res == 4
+            await trans.commit()
 
 
 async def test_base(db):

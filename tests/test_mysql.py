@@ -1,17 +1,32 @@
 import pytest
 
 
+@pytest.fixture(scope='module')
+def db_url():
+    return 'mysql://root@127.0.0.1:3306/tests'
+
+
 @pytest.fixture
 async def dialect():
     return 'mysql'
 
 
 @pytest.fixture
-async def db():
+async def db(db_url):
     from aio_databases import Database
 
-    async with Database('mysql://root@127.0.0.1:3306/tests') as db:
+    async with Database(db_url) as db:
         yield db
+
+
+async def test_transaction(db_url):
+    from aio_databases import Database
+
+    async with Database(db_url) as db:
+        async with db.transaction() as trans:
+            res = await db.fetchval('select 2 * %s', 2)
+            assert res == 4
+            await trans.commit()
 
 
 async def test_base(db):

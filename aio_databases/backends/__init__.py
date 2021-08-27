@@ -57,8 +57,12 @@ class ABCConnection(abc.ABC):
 
     @property
     def conn(self):
-        assert self._conn is not None, "Connection is not acquired"
+        assert self.is_ready, "Connection is not acquired"
         return self._conn
+
+    @property
+    def is_ready(self) -> bool:
+        return self._conn is not None
 
     async def acquire(self) -> ABCConnection:
         if self._conn is None:
@@ -134,6 +138,9 @@ class ABCTransaction(abc.ABC):
 
     async def start(self):
         connection = self.connection
+        if not connection.is_ready:
+            await connection.acquire()
+
         async with connection._lock:
             await self._start()
             connection.transactions.append(self)

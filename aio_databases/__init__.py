@@ -8,7 +8,7 @@ import logging
 from contextvars import ContextVar
 from urllib.parse import urlsplit
 
-from .backends import BACKENDS, ABCDabaseBackend, ABCConnection
+from .backends import BACKENDS, ABCDabaseBackend, ABCConnection, ABCTransaction
 
 
 __version__ = '0.0.13'
@@ -69,7 +69,7 @@ class Database:
 
         return conn
 
-    def transaction(self):
+    def transaction(self) -> ABCTransaction:
         return self.connection.transaction()
 
     async def execute(self, query: t.Any, *args, **params) -> t.Any:

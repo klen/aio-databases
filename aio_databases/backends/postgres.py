@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing as t
 
 from asyncpg import create_pool, Connection, Pool, Record
+from asyncpg.transaction import Transaction
 
 from . import ABCDabaseBackend, ABCConnection, ABCTransaction
 
@@ -71,9 +72,13 @@ class PostgresConnection(ABCConnection):
 
 class PostgresTransaction(ABCTransaction):
 
-    def __init__(self, connection: PostgresConnection):
-        super(PostgresTransaction, self).__init__(connection)
-        self.trans = self.connection.conn.transaction()
+    _trans: t.Optional[Transaction] = None
+
+    @property
+    def trans(self) -> Transaction:
+        if self._trans is None:
+            self._trans = self.connection.conn.transaction()
+        return self._trans
 
     async def _start(self):
         return await self.trans.start()
