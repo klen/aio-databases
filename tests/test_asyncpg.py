@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 
@@ -19,6 +21,25 @@ async def test_transaction(db_url):
             res = await db.fetchval('select 2 * $1', 2)
             assert res == 4
             await trans.commit()
+
+
+async def test_pool(db_url):
+    from aio_databases import Database
+
+    maxsize = 2
+    async with Database(db_url, min_size=1, max_size=maxsize) as db:
+        assert db.backend.pool
+        assert db.backend.pool._maxsize == 2
+
+        async def process(sql):
+            async with db.connection:
+                return await db.fetchval(sql)
+
+        done, failed = await asyncio.wait([process("select 1") for _ in range(maxsize * 2)])
+        assert not failed
+        assert done
+        assert len(done) == 4
+        assert [t.result() for t in done] == [1, 1, 1, 1]
 
 
 async def test_base(db):

@@ -91,6 +91,19 @@ $ pip install aio-databases[asyncpg]
             await trans2.rollback()
 ```
 
+* Manage connections
+
+```python
+
+    await db.connection.acquire()
+    # ...
+    await db.connection.relese()
+
+    # an alternative
+    async with db.connection:
+        # ...
+```
+
 ## Bug tracker
 
 If you have any suggestions, bug reports or annoyances please report them to
