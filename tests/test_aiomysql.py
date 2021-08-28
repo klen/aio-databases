@@ -13,6 +13,24 @@ async def dialect():
     return 'mysql'
 
 
+async def test_connection(db_url):
+    from aio_databases import Database
+
+    async with Database(db_url) as db:
+        c1 = await db.connection.acquire()
+        c2 = await db.connection.acquire()
+        assert c1 is c2
+
+        async def process():
+            return await db.connection.acquire()
+
+        done, failed = await asyncio.wait([process(), process(), process(), process()])
+        assert not failed
+        assert done
+        assert len(done) == 4
+        assert len(set(done)) == 4
+
+
 async def test_transaction(db_url):
     from aio_databases import Database
 
