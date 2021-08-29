@@ -7,6 +7,15 @@ PostgreSQL, MySQL).
 [![PYPI Version](https://img.shields.io/pypi/v/aio-databases)](https://pypi.org/project/aio-databases/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/aio-databases)](https://pypi.org/project/aio-databases/)
 
+## Features
+
+* Has no dependencies (except databases drivers)
+* Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
+  [aiomysql](https://github.com/aio-libs/aiomysql),
+  [aiopg](https://github.com/aio-libs/aiopg),
+  [asyncpg](https://github.com/MagicStack/asyncpg)
+* Manage pools of connections
+* Manage transactions
 
 ## Requirements
 
@@ -48,12 +57,12 @@ $ pip install aio-databases[asyncpg]
 * Prepare the database to work
 
 ```python
+    # Initialize a database's pool
     async def my_app_starts():
-        # Initialize a database's pool
         await db.connect()
 
+    # Close the pool
     async def my_app_ends():
-        # Close pool/connections
         await db.disconnect()
 
     # As an alternative users are able to use the database
@@ -80,6 +89,28 @@ $ pip install aio-databases[asyncpg]
     assert result == 4
 ```
 
+* Manage connections (please ensure that you have released a connection after
+  acquiring)
+
+```python
+
+    # Create a new connection object
+    conn = db.connection()
+
+    # or use the existing which one is binded for the current task
+    conn = db.connection(False)
+
+    # Acquire DB connection
+    await conn.acquire()
+    # ...
+    # Release DB connection
+    await conn.relese()
+
+    # an alternative (acquire/release as an async context)
+    async with db.connection():
+        # ...
+```
+
 * Use transactions
 
 ```python
@@ -89,19 +120,11 @@ $ pip install aio-databases[asyncpg]
         async with db.transaction() as trans2:
             # do some work ...
             await trans2.rollback()
-```
 
-* Manage connections
+        # unnessesary, the transaction will be commited on exit from the
+        # current context
 
-```python
-
-    await db.connection.acquire()
-    # ...
-    await db.connection.relese()
-
-    # an alternative
-    async with db.connection:
-        # ...
+        await trans1.commit()
 ```
 
 ## Bug tracker

@@ -31,25 +31,25 @@ class Connection(ABCConnection):
 
     transaction_cls = Transaction
 
-    async def execute(self, query: str, *args, **params) -> t.Any:
+    async def _execute(self, query: str, *params, **options) -> t.Any:
         conn: asyncpg.Connection = self.conn
-        return await conn.execute(query, *args, **params)
+        return await conn.execute(query, *params, **options)
 
-    async def executemany(self, query: str, *args, **params) -> t.Any:
+    async def _executemany(self, query: str, *params, **options) -> t.Any:
         conn: asyncpg.Connection = self.conn
-        return await conn.executemany(query, args, **params)
+        return await conn.executemany(query, params, **options)
 
-    async def fetchall(self, query: str, *args, **params) -> t.List[asyncpg.Record]:
+    async def _fetchall(self, query: str, *params, **options) -> t.List[asyncpg.Record]:
         conn: asyncpg.Connection = self.conn
-        return await conn.fetch(query, *args, **params)
+        return await conn.fetch(query, *params, **options)
 
-    async def fetchone(self, query: str, *args, **params) -> t.Optional[asyncpg.Record]:
+    async def _fetchone(self, query: str, *params, **options) -> t.Optional[asyncpg.Record]:
         conn: asyncpg.Connection = self.conn
-        return await conn.fetchrow(query, *args, **params)
+        return await conn.fetchrow(query, *params, **options)
 
-    async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
+    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
         conn: asyncpg.Connection = self.conn
-        return await conn.fetchval(query, *args, **params)
+        return await conn.fetchval(query, *params, column=column, **options)
 
 
 class Backend(ABCDatabaseBackend):

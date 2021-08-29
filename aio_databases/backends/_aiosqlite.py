@@ -40,33 +40,38 @@ class Connection(ABCConnection):
 
     transaction_cls = Transaction
 
-    async def execute(self, query: str, *args, **params) -> t.Any:
+    async def _execute(self, query: str, *params, **options) -> t.Any:
         async with self.conn.cursor() as cursor:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params)
             if cursor.lastrowid == 0:
                 return cursor.rowcount
             return cursor.lastrowid
 
-    async def executemany(self, query: str, *args, **params) -> None:
-        for _args in args:
-            await self.execute(query, _args, **params)
+    async def _executemany(self, query: str, *params, **options) -> t.Any:
+        async with self.conn.cursor() as cursor:
+            await cursor.executemany(query, params)
+            #  for args in params:
+            #      await cursor.execute(query, args)
+            if cursor.lastrowid == 0:
+                return cursor.rowcount
+            return cursor.lastrowid
 
-    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
-        async with self.conn.execute(query, args) as cursor:
+    async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
+        async with self.conn.execute(query, params) as cursor:
             rows = await cursor.fetchall()
             desc = cursor.description
             return [Record(row, desc) for row in rows]
 
-    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
-        async with self.conn.execute(query, args) as cursor:
+    async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
+        async with self.conn.execute(query, params) as cursor:
             row = await cursor.fetchone()
             if row is None:
                 return row
 
             return Record(row, cursor.description)
 
-    async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
-        row = await self.fetchone(query, *args, **params)
+    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
+        row = await self.fetchone(query, *params)
         if row:
             return row[column]
 

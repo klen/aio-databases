@@ -40,10 +40,10 @@ class Connection(ABCConnection):
 
     transaction_cls = Transaction
 
-    async def execute(self, query: str, *args, **params) -> t.Any:
-        cursor = await self.conn.cursor()
+    async def _execute(self, query: str, *params, **options) -> t.Any:
+        cursor: aiopg.Cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params, **options)
             if cursor.lastrowid == 0:
                 return cursor.rowcount
             return cursor.lastrowid
@@ -51,19 +51,18 @@ class Connection(ABCConnection):
         finally:
             cursor.close()
 
-    async def executemany(self, query: str, *args, **params) -> t.Any:
+    async def _executemany(self, query: str, *params, **options) -> t.Any:
         cursor = await self.conn.cursor()
         try:
-            for args_ in args:
-                await cursor.execute(query, args_)
-
+            for args_ in params:
+                await cursor.execute(query, args_, **options)
         finally:
             cursor.close()
 
-    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
+    async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params, **options)
             rows = await cursor.fetchall()
             desc = cursor.description
             return [Record(row, desc) for row in rows]
@@ -71,10 +70,10 @@ class Connection(ABCConnection):
         finally:
             cursor.close()
 
-    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
+    async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params, **options)
             row = await cursor.fetchone()
             if row is None:
                 return row
@@ -84,8 +83,8 @@ class Connection(ABCConnection):
         finally:
             cursor.close()
 
-    async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
-        res = await self.fetchone(query, *args, **params)
+    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
+        res = await self.fetchone(query, *params, **options)
         if res:
             res = res[column]
         return res

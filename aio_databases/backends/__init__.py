@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import typing as t
 
+import logging
 import abc
 import asyncio
 from urllib.parse import SplitResult, parse_qsl
 
+from .. import logger
 from ..record import Record
 
 
@@ -45,7 +47,7 @@ class ABCTransaction(abc.ABC):
     async def start(self):
         connection = self.connection
         if not connection.is_ready:
-            await connection.acquire()
+            raise RuntimeError('There is no an acquired connection to make a transaction')
 
         async with connection._lock:
             await self._start()
@@ -70,8 +72,11 @@ class ABCConnection(abc.ABC):
 
     transaction_cls: t.ClassVar[t.Type[ABCTransaction]]
 
+    __slots__ = 'database', 'logger', 'transactions', '_conn', '_lock'
+
     def __init__(self, database: ABCDatabaseBackend):
         self.database = database
+        self.logger = database.logger
         self.transactions: t.List[ABCTransaction] = []
         self._conn = None
         self._lock = asyncio.Lock()
@@ -103,24 +108,49 @@ class ABCConnection(abc.ABC):
 
     __aexit__ = release
 
+    async def execute(self, query: t.Any, *params, **options) -> t.Any:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return await self._execute(sql, *params, **options)
+
+    async def executemany(self, query: t.Any, *params, **options) -> t.Any:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return await self._executemany(sql, *params, **options)
+
+    async def fetchall(self, query: t.Any, *params, **options) -> t.Any:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return await self._fetchall(sql, *params, **options)
+
+    async def fetchone(self, query: t.Any, *params, **options) -> t.Any:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return await self._fetchone(sql, *params, **options)
+
+    async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return await self._fetchval(sql, *params, **options)
+
     @abc.abstractmethod
-    async def execute(self, query: str, *args, **params) -> t.Any:
+    async def _execute(self, query: str, *params, **options) -> t.Any:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def executemany(self, query: str, *args, **params) -> t.Any:
+    async def _executemany(self, query: str, *params, **options) -> t.Any:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
+    async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
+    async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
+    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
         raise NotImplementedError
 
     def transaction(self) -> ABCTransaction:
@@ -135,8 +165,11 @@ class ABCDatabaseBackend(abc.ABC):
     record_cls = Record
     connection_cls: t.ClassVar[t.Type[ABCConnection]]
 
-    def __init__(self, url: SplitResult, **options):
+    __slots__ = 'url', 'logger', 'options'
+
+    def __init__(self, url: SplitResult, logger: logging.Logger = logger, **options):
         self.url = url
+        self.logger = logger
         self.options = dict(parse_qsl(url.query), **options)
 
     def __init_subclass__(cls, *args, **kwargs):

@@ -19,31 +19,36 @@ class Transaction(ABCTransaction):
             self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
             return await connection.execute(f"SAVEPOINT {savepoint}")
 
+        connection.logger.debug(('BEGIN',))
         return await connection.conn.begin()
 
     async def _commit(self) -> t.Any:
         savepoint = self.savepoint
+        connection = self.connection
         if savepoint:
-            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
+            return await connection.execute(f"RELEASE SAVEPOINT {savepoint}")
 
-        return await self.connection.conn.commit()
+        connection.logger.debug(('COMMIT',))
+        return await connection.conn.commit()
 
     async def _rollback(self) -> t.Any:
         savepoint = self.savepoint
+        connection = self.connection
         if savepoint:
-            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+            return await connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
 
-        return await self.connection.conn.rollback()
+        connection.logger.debug(('ROLLBACK',))
+        return await connection.conn.rollback()
 
 
 class Connection(ABCConnection):
 
     transaction_cls = Transaction
 
-    async def execute(self, query: str, *args, **params) -> t.Any:
+    async def _execute(self, query: str, *params, **options) -> t.Any:
         cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params)
             if cursor.lastrowid == 0:
                 return cursor.rowcount
             return cursor.lastrowid
@@ -51,19 +56,17 @@ class Connection(ABCConnection):
         finally:
             await cursor.close()
 
-    async def executemany(self, query: str, *args, **params) -> t.Any:
+    async def _executemany(self, query: str, *params, **options) -> t.Any:
         cursor = await self.conn.cursor()
         try:
-            for args_ in args:
-                await cursor.execute(query, args_)
-
+            await cursor.executemany(query, params)
         finally:
             await cursor.close()
 
-    async def fetchall(self, query: str, *args, **params) -> t.List[t.Mapping]:
+    async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params)
             rows = await cursor.fetchall()
             desc = cursor.description
             return [Record(row, desc) for row in rows]
@@ -71,10 +74,10 @@ class Connection(ABCConnection):
         finally:
             await cursor.close()
 
-    async def fetchone(self, query: str, *args, **params) -> t.Optional[t.Mapping]:
+    async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
-            await cursor.execute(query, args)
+            await cursor.execute(query, params)
             row = await cursor.fetchone()
             if row is None:
                 return row
@@ -84,8 +87,8 @@ class Connection(ABCConnection):
         finally:
             await cursor.close()
 
-    async def fetchval(self, query: str, *args, column: t.Any = 0, **params) -> t.Any:
-        res = await self.fetchone(query, *args, **params)
+    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
+        res = await self.fetchone(query, *params)
         if res:
             res = res[column]
         return res
