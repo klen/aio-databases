@@ -9,6 +9,11 @@ BACKEND_PARAMS = {
     'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
     'aiosqlite': ('aiosqlite:///:memory:', {}),
     'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
+    # Doesnt supports python 3.9
+    #  'aioodbc': ('aioodbc://localhost', {
+    #      'dsn': 'Driver=/usr/local/lib/libsqlite3odbc.dylib;Database=db.sqlite',
+    #      'db_type': 'sqlite', 'maxsize': 2, 'minsize': 1,
+    #  }),
 }
 
 
@@ -18,14 +23,14 @@ def aiolib():
     return ('asyncio', {'use_uvloop': False})
 
 
-@pytest.fixture(scope='session', params=['aiomysql', 'aiopg', 'aiosqlite', 'asyncpg'])
+@pytest.fixture(scope='session', params=[name for name in BACKEND_PARAMS])
 def backend(request):
     return request.param
 
 
 @pytest.fixture
 def param(backend):
-    if backend == 'aiosqlite':
+    if backend in {'aiosqlite', 'aioodbc'}:
         return lambda: '?'
 
     if backend in ('aiomysql', 'aiopg'):

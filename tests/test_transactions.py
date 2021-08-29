@@ -8,9 +8,12 @@ async def test_base(db):
         async with db.transaction():
             assert await db.fetchval('select 1')
 
+    res = None
     async with db.connection():
         async with db.transaction():
-            assert await db.fetchval('select 1')
+            res = await db.fetchval('select 1')
+
+    assert res == 1
 
 
 async def test_child_tasks(db):

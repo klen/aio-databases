@@ -55,6 +55,8 @@ class Database:
             await self.backend.disconnect()
             self.is_connected = False
 
+        self._conn_ctx.set(None)
+
     __aexit__ = disconnect
 
     def connection(self, create: bool = True) -> ABCConnection:

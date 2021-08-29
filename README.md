@@ -41,6 +41,9 @@ $ pip install aio-databases[aiomysql]
 # To support PostgreSQL (choose one)
 $ pip install aio-databases[aiopg]
 $ pip install aio-databases[asyncpg]
+
+# To support ODBC (alpha state)
+$ pip install aio-databases[aioodbc]
 ```
 
 

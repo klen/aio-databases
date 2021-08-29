@@ -9,6 +9,7 @@ def test_backends():
     assert 'mysql' in db_types
     assert 'sqlite' in db_types
     assert 'postgresql' in db_types
+    assert 'odbc' in db_types
 
 
 def test_database():
@@ -24,6 +25,7 @@ def test_database():
     assert Database('aiomysql://db.sqlite')
     assert Database('aiosqlite://db.sqlite')
     assert Database('asyncpg://db.sqlite')
+    assert Database('aioodbc://localhost', dsn='Driver=SQLite;Database=db.sqlite')
 
 
 def test_record():

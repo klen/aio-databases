@@ -76,10 +76,10 @@ class ABCConnection(abc.ABC):
 
     def __init__(self, database: ABCDatabaseBackend):
         self.database = database
-        self.logger = database.logger
+        self.logger: logging.Logger = database.logger
         self.transactions: t.List[ABCTransaction] = []
         self._conn = None
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def conn(self):
@@ -224,4 +224,9 @@ except ImportError:
 try:
     from ._aiomysql import Backend as AIOMySQLBackend  # noqa
 except ImportError:
+    pass
+
+try:
+    from ._aioodbc import Backend as AIOODBCBackend  # noqa
+except ImportError as exc:
     pass

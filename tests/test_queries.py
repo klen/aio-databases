@@ -15,10 +15,10 @@ async def test_base(db, param):
     await db.execute(f"select {ph}", '1')
 
     res = await db.fetchall(f"select (2 * {ph}) res", 2)
-    assert res == [(4,)]
+    assert [tuple(r) for r in res] == [(4,)]
 
     res = await db.fetchone(f"select (2 * {ph}) res", 2)
-    assert res == (4,)
+    assert tuple(res) == (4,)
     assert isinstance(res, db.backend.record_cls)
 
     res = await db.fetchval(f"select 2 + {ph}", 2)

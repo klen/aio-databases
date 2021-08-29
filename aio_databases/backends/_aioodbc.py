@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import typing as t
 from uuid import uuid4
-from logging import Logger
 
-import aiomysql
+import aioodbc
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 from ..record import Record
@@ -20,26 +19,21 @@ class Transaction(ABCTransaction):
             self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
             return await connection.execute(f"SAVEPOINT {savepoint}")
 
-        connection.logger.debug(('BEGIN',))
-        return await connection.conn.begin()
+        return await connection.execute("BEGIN TRANSACTION")
 
     async def _commit(self) -> t.Any:
         savepoint = self.savepoint
-        connection = self.connection
         if savepoint:
-            return await connection.execute(f"RELEASE SAVEPOINT {savepoint}")
+            return await self.connection.execute(f"RELEASE SAVEPOINT {savepoint}")
 
-        connection.logger.debug(('COMMIT',))
-        return await connection.conn.commit()
+        return await self.connection.execute("COMMIT")
 
     async def _rollback(self) -> t.Any:
         savepoint = self.savepoint
-        connection = self.connection
         if savepoint:
-            return await connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+            return await self.connection.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
 
-        connection.logger.debug(('ROLLBACK',))
-        return await connection.conn.rollback()
+        return await self.connection.execute("ROLLBACK")
 
 
 class Connection(ABCConnection):
@@ -50,19 +44,16 @@ class Connection(ABCConnection):
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, params)
-            if cursor.lastrowid == 0:
-                return cursor.rowcount
-            return cursor.lastrowid
-
+            return cursor.rowcount
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def _executemany(self, query: str, *params, **options) -> t.Any:
         cursor = await self.conn.cursor()
         try:
             await cursor.executemany(query, params)
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
         cursor = await self.conn.cursor()
@@ -73,7 +64,7 @@ class Connection(ABCConnection):
             return [Record(row, desc) for row in rows]
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
@@ -86,7 +77,7 @@ class Connection(ABCConnection):
             return Record(row, cursor.description)
 
         finally:
-            await cursor.close()
+            cursor.close()
 
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
         res = await self.fetchone(query, *params)
@@ -95,23 +86,29 @@ class Connection(ABCConnection):
         return res
 
 
+class DBType:
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return 'odbc'
+        breakpoint()
+        return obj.options['dsn']
+
+
 class Backend(ABCDatabaseBackend):
 
-    name = 'aiomysql'
-    db_type = 'mysql'
+    name = 'aioodbc'
     connection_cls = Connection
 
-    pool: t.Optional[aiomysql.Pool] = None
+    pool: t.Optional[aioodbc.Pool] = None
+    db_type = 'odbc'
+
+    def __init__(self, *args, db_type: str = None, **kwargs):
+        self.db_type = db_type or self.db_type  # type: ignore
+        super(Backend, self).__init__(*args, **kwargs)
 
     async def connect(self) -> None:
-        self.pool = await aiomysql.create_pool(
-            **self.options,
-            host=self.url.hostname,
-            port=self.url.port,
-            user=self.url.username,
-            password=self.url.password,
-            db=self.url.path.strip('/'),
-        )
+        self.pool = await aioodbc.create_pool(**self.options)
 
     async def disconnect(self) -> None:
         pool = self.pool
@@ -120,12 +117,12 @@ class Backend(ABCDatabaseBackend):
         pool.close()
         await pool.wait_closed()
 
-    async def acquire(self) -> aiomysql.Connection:
+    async def acquire(self) -> aioodbc.Connection:
         pool = self.pool
         assert pool is not None, "Database is not connected"
         return await pool.acquire()
 
-    async def release(self, conn: aiomysql.Connection):
+    async def release(self, conn: aioodbc.Connection):
         pool = self.pool
         assert pool is not None, "Database is not connected"
         await pool.release(conn)
