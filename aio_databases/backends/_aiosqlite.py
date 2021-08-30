@@ -62,6 +62,12 @@ class Connection(ABCConnection):
             desc = cursor.description
             return [Record(row, desc) for row in rows]
 
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[t.Mapping]:
+        async with self.conn.execute(query, params) as cursor:
+            rows = await cursor.fetchmany(size)
+            desc = cursor.description
+            return [Record(row, desc) for row in rows]
+
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         async with self.conn.execute(query, params) as cursor:
             row = await cursor.fetchone()
@@ -74,6 +80,19 @@ class Connection(ABCConnection):
         row = await self.fetchone(query, *params)
         if row:
             return row[column]
+
+    async def _iterate(self, query: str, *params, **options):
+        cursor = await self.conn.cursor()
+        try:
+            await cursor.execute(query, params)
+            while True:
+                row = await cursor.fetchone()
+                if row is None:
+                    break
+                yield Record(row, cursor.description)
+
+        finally:
+            await cursor.close()
 
 
 class Backend(ABCDatabaseBackend):

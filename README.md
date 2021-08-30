@@ -92,6 +92,15 @@ $ pip install aio-databases[aioodbc]
     assert result == 4
 ```
 
+* Iterate through rows one by one
+
+```python
+
+    async for rec in db.iterate('select name from users'):
+        print(rec)
+
+```
+
 * Manage connections (please ensure that you have released a connection after
   acquiring)
 

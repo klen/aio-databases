@@ -1,4 +1,5 @@
 import pytest
+from pypika import Parameter
 
 
 @pytest.fixture(autouse=True)
@@ -15,6 +16,9 @@ async def test_base(db, param):
     await db.execute(f"select {ph}", '1')
 
     res = await db.fetchall(f"select (2 * {ph}) res", 2)
+    assert [tuple(r) for r in res] == [(4,)]
+
+    res = await db.fetchmany(10, f"select (2 * {ph}) res", 2)
     assert [tuple(r) for r in res] == [(4,)]
 
     res = await db.fetchone(f"select (2 * {ph}) res", 2)
@@ -61,8 +65,6 @@ async def test_all(db, User, manager, schema):
 
 
 async def test_execute_many(db, User, manager, schema, param):
-    from pypika import Parameter
-
     UserManager = manager(User)
     qs = UserManager.insert(name=Parameter(param()), fullname=Parameter(param()))
     await db.executemany(qs, ('Jim', 'Jim Jones'), ('Tom', 'Tom Smith'))
@@ -72,3 +74,12 @@ async def test_execute_many(db, User, manager, schema, param):
     u1, u2 = res
     assert u1['name'] == 'Jim'
     assert u2['name'] == 'Tom'
+
+
+async def test_iterate(db, User, manager, schema, param):
+    UserManager = manager(User)
+    qs = UserManager.insert(name=Parameter(param()), fullname=Parameter(param()))
+    await db.executemany(qs, ('Jim', 'Jim Jones'), ('Tom', 'Tom Smith'))
+
+    async for rec in db.iterate(UserManager.select()):
+        assert rec['name'] in {'Jim', 'Tom'}

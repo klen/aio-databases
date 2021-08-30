@@ -86,6 +86,11 @@ class Database:
         async with conn._lock:
             return await conn.fetchall(query, *params, **options)
 
+    async def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.List[t.Mapping]:
+        conn = await self.connection(False).acquire()
+        async with conn._lock:
+            return await conn.fetchmany(size, query, *params, **options)
+
     async def fetchone(self, query: t.Any, *params, **options) -> t.Optional[t.Mapping]:
         conn = await self.connection(False).acquire()
         async with conn._lock:
@@ -94,4 +99,11 @@ class Database:
     async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
         conn = await self.connection(False).acquire()
         async with conn._lock:
-            return await conn.fetchval(query, *params, column=column)
+            return await conn.fetchval(query, *params, column=column, **options)
+
+    async def iterate(self, query: t.Any, *params, **options) -> t.Any:
+        """Iterate through rows."""
+        conn = await self.connection(False).acquire()
+        async with conn._lock:
+            async for res in conn.iterate(query, *params, **options):
+                yield res

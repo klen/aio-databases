@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import typing as t
 from uuid import uuid4
-from logging import Logger
 
 import aiomysql
 
@@ -75,6 +74,17 @@ class Connection(ABCConnection):
         finally:
             await cursor.close()
 
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[t.Mapping]:
+        cursor = await self.conn.cursor()
+        try:
+            await cursor.execute(query, params)
+            rows = await cursor.fetchmany(size)
+            desc = cursor.description
+            return [Record(row, desc) for row in rows]
+
+        finally:
+            await cursor.close()
+
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         cursor = await self.conn.cursor()
         try:
@@ -84,7 +94,6 @@ class Connection(ABCConnection):
                 return row
 
             return Record(row, cursor.description)
-
         finally:
             await cursor.close()
 
@@ -93,6 +102,19 @@ class Connection(ABCConnection):
         if res:
             res = res[column]
         return res
+
+    async def _iterate(self, query: str, *params, **options):
+        cursor = await self.conn.cursor()
+        try:
+            await cursor.execute(query, params)
+            while True:
+                row = await cursor.fetchone()
+                if row is None:
+                    break
+                yield Record(row, cursor.description)
+
+        finally:
+            await cursor.close()
 
 
 class Backend(ABCDatabaseBackend):

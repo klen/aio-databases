@@ -108,30 +108,40 @@ class ABCConnection(abc.ABC):
 
     __aexit__ = release
 
-    async def execute(self, query: t.Any, *params, **options) -> t.Any:
+    def execute(self, query: t.Any, *params, **options) -> t.Awaitable:
         sql = str(query)
         self.logger.debug((sql, *params))
-        return await self._execute(sql, *params, **options)
+        return self._execute(sql, *params, **options)
 
-    async def executemany(self, query: t.Any, *params, **options) -> t.Any:
+    def executemany(self, query: t.Any, *params, **options) -> t.Awaitable:
         sql = str(query)
         self.logger.debug((sql, *params))
-        return await self._executemany(sql, *params, **options)
+        return self._executemany(sql, *params, **options)
 
-    async def fetchall(self, query: t.Any, *params, **options) -> t.Any:
+    def fetchall(self, query: t.Any, *params, **options) -> t.Awaitable:
         sql = str(query)
         self.logger.debug((sql, *params))
-        return await self._fetchall(sql, *params, **options)
+        return self._fetchall(sql, *params, **options)
 
-    async def fetchone(self, query: t.Any, *params, **options) -> t.Any:
+    def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.Awaitable:
         sql = str(query)
         self.logger.debug((sql, *params))
-        return await self._fetchone(sql, *params, **options)
+        return self._fetchmany(size, sql, *params, **options)
 
-    async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
+    def fetchone(self, query: t.Any, *params, **options) -> t.Awaitable:
         sql = str(query)
         self.logger.debug((sql, *params))
-        return await self._fetchval(sql, *params, **options)
+        return self._fetchone(sql, *params, **options)
+
+    def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Awaitable:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return self._fetchval(sql, *params, column=column, **options)
+
+    def iterate(self, query: t.Any, *params, **options) -> t.AsyncGenerator:
+        sql = str(query)
+        self.logger.debug((sql, *params))
+        return self._iterate(sql, *params, **options)
 
     @abc.abstractmethod
     async def _execute(self, query: str, *params, **options) -> t.Any:
@@ -146,11 +156,19 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[t.Mapping]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
         raise NotImplementedError
 
     @abc.abstractmethod
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def _iterate(self, query: str, *params, **options) -> t.Any:
         raise NotImplementedError
 
     def transaction(self) -> ABCTransaction:
@@ -228,5 +246,5 @@ except ImportError:
 
 try:
     from ._aioodbc import Backend as AIOODBCBackend  # noqa
-except ImportError as exc:
+except ImportError:
     pass
