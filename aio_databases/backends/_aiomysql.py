@@ -103,7 +103,7 @@ class Connection(ABCConnection):
             res = res[column]
         return res
 
-    async def _iterate(self, query: str, *params, **options):
+    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[Record]:
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, params)

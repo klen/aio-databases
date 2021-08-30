@@ -101,7 +101,7 @@ class Database:
         async with conn._lock:
             return await conn.fetchval(query, *params, column=column, **options)
 
-    async def iterate(self, query: t.Any, *params, **options) -> t.Any:
+    async def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
         """Iterate through rows."""
         conn = await self.connection(False).acquire()
         async with conn._lock:

@@ -138,7 +138,7 @@ class ABCConnection(abc.ABC):
         self.logger.debug((sql, *params))
         return self._fetchval(sql, *params, column=column, **options)
 
-    def iterate(self, query: t.Any, *params, **options) -> t.AsyncGenerator:
+    def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
         sql = str(query)
         self.logger.debug((sql, *params))
         return self._iterate(sql, *params, **options)
@@ -168,8 +168,9 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _iterate(self, query: str, *params, **options) -> t.Any:
+    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator:
         raise NotImplementedError
+        yield
 
     def transaction(self) -> ABCTransaction:
         return self.transaction_cls(self)

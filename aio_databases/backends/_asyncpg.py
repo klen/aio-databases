@@ -57,7 +57,7 @@ class Connection(ABCConnection):
         conn: asyncpg.Connection = self.conn
         return await conn.fetchval(query, *params, column=column, **options)
 
-    async def _iterate(self, query: str, *params, **options) -> t.Any:
+    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
         conn: asyncpg.Connection = self.conn
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):

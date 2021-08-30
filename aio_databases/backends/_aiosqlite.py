@@ -81,7 +81,7 @@ class Connection(ABCConnection):
         if row:
             return row[column]
 
-    async def _iterate(self, query: str, *params, **options):
+    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[Record]:
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, params)
