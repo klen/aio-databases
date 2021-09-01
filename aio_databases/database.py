@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from urllib.parse import urlsplit
 
 from . import logger
-from .backends import BACKENDS, ABCDatabaseBackend, ABCConnection, ABCTransaction  # noqa
+from .backends import BACKENDS, SHORTCUTS, ABCDatabaseBackend, ABCConnection, ABCTransaction
 
 
 class Database:
@@ -21,6 +21,7 @@ class Database:
         parsed_url = urlsplit(url)
 
         scheme = parsed_url.scheme
+        scheme = SHORTCUTS.get(scheme, scheme)
         for backend_cls in BACKENDS:
             if backend_cls.name == scheme or backend_cls.db_type == scheme:
                 break

@@ -12,6 +12,11 @@ from ..record import Record
 
 
 BACKENDS = []
+SHORTCUTS = {
+    'postgres': 'postgresql',
+    'postgressql': 'postgresql',
+    'sqllite': 'sqlite',
+}
 
 
 class ABCTransaction(abc.ABC):
@@ -231,12 +236,12 @@ except ImportError:
     pass
 
 try:
-    from ._asyncpg import Backend as AsyncPGBackend  # noqa
+    from ._aiopg import Backend as AIOPGBackend  # noqa
 except ImportError:
     pass
 
 try:
-    from ._aiopg import Backend as AIOPGBackend  # noqa
+    from ._asyncpg import Backend as AsyncPGBackend  # noqa
 except ImportError:
     pass
 

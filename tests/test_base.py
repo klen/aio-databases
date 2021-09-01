@@ -21,6 +21,7 @@ def test_database():
     assert Database('mysql://db.sqlite')
     assert Database('sqlite://db.sqlite')
     assert Database('postgresql://db.sqlite')
+    assert Database('postgres://db.sqlite')
 
     assert Database('aiomysql://db.sqlite')
     assert Database('aiosqlite://db.sqlite')

@@ -107,11 +107,12 @@ class Connection(ABCConnection):
         cursor = await self.conn.cursor()
         try:
             await cursor.execute(query, params)
+            desc = cursor.description
             while True:
                 row = await cursor.fetchone()
                 if row is None:
                     break
-                yield Record(row, cursor.description)
+                yield Record(row, desc)
 
         finally:
             await cursor.close()
