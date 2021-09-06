@@ -21,6 +21,15 @@ async def test_connection(db):
     assert len(set(done)) == 4
 
 
+async def test_connection_context(db):
+    async with db.connection() as conn:
+        assert await conn.fetchval('select 1')
+
+    with pytest.raises(ValueError):
+        async with db.connection() as conn:
+            raise ValueError
+
+
 @pytest.mark.parametrize('backend', ['aiomysql', 'aiopg', 'asyncpg'])
 async def test_pool(db):
     assert db.backend.pool

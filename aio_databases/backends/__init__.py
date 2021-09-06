@@ -104,12 +104,11 @@ class ABCConnection(abc.ABC):
 
     __aenter__ = acquire
 
-    async def release(self, *args) -> ABCConnection:
+    async def release(self, *args):
         async with self._lock:
             conn, self._conn = self._conn, None
             if conn:
                 await self.database.release(conn)
-            return self
 
     __aexit__ = release
 

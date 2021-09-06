@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing as t
+
 from uuid import uuid4
 
 import aiosqlite
@@ -101,6 +102,10 @@ class Backend(ABCDatabaseBackend):
     db_type = 'sqlite'
     connection_cls = Connection
 
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('isolation_level', None)
+        super(Backend, self).__init__(*args, **kwargs)
+
     async def connect(self) -> None:
         pass
 
@@ -108,9 +113,8 @@ class Backend(ABCDatabaseBackend):
         pass
 
     async def acquire(self) -> aiosqlite.Connection:
-        conn = aiosqlite.connect(database=self.url.netloc, isolation_level=None, **self.options)
-        await conn.__aenter__()
-        return conn
+        return await aiosqlite.connect(database=self.url.netloc or self.url.path, **self.options)
 
-    async def release(self, conn: aiosqlite.Connection) -> None:
-        await conn.__aexit__(None, None, None)
+    async def release(self, conn: aiosqlite.Connection):
+        await conn.commit()
+        await conn.close()
