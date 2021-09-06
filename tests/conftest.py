@@ -7,7 +7,7 @@ from pypika_orm import Manager, Model, fields
 BACKEND_PARAMS = {
     'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2}),
     'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
-    'aiosqlite': ('aiosqlite://:memory:', {}),
+    'aiosqlite': ('aiosqlite:///:memory:', {}),
     'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
     # Doesnt supports python 3.9
     #  'aioodbc': ('aioodbc://localhost', {

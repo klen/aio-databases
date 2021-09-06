@@ -104,8 +104,8 @@ class Backend(ABCDatabaseBackend):
 
     def __init__(self, url, isolation_level: str = None, **kwargs):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
-        if url.netloc == ':memory:':
-            url = url._replace(path=':memory:')._replace(netloc='')
+        if ':memory:' in url.path:
+            url = url._replace(path=':memory:')
         super(Backend, self).__init__(url, isolation_level=isolation_level, **kwargs)
 
     async def connect(self) -> None:
