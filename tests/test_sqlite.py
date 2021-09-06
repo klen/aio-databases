@@ -16,6 +16,10 @@ def manager():
 async def test_database(tmp_path):
     from aio_databases import Database
 
+    db = Database('sqlite:///example.db')
+    assert db
+    assert db.backend.url
+
     async with Database("sqlite:///:memory:") as db:
         async with db.connection():
             assert await db.fetchval('select 1')

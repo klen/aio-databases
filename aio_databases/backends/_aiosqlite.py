@@ -106,6 +106,8 @@ class Backend(ABCDatabaseBackend):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
         if ':memory:' in url.path:
             url = url._replace(path='')
+        elif url.path:
+            url = url._replace(path=url.path[1:])
 
         super(Backend, self).__init__(url, isolation_level=isolation_level, **kwargs)
 
