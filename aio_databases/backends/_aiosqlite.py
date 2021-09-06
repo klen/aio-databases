@@ -102,9 +102,11 @@ class Backend(ABCDatabaseBackend):
     db_type = 'sqlite'
     connection_cls = Connection
 
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('isolation_level', None)
-        super(Backend, self).__init__(*args, **kwargs)
+    def __init__(self, url, isolation_level: str = None, **kwargs):
+        """Set a default isolation level (enable autocommit). Fix in memory URL."""
+        if url.netloc == ':memory:':
+            url = url._replace(path=':memory:')._replace(netloc='')
+        super(Backend, self).__init__(url, isolation_level=isolation_level, **kwargs)
 
     async def connect(self) -> None:
         pass
@@ -113,7 +115,7 @@ class Backend(ABCDatabaseBackend):
         pass
 
     async def acquire(self) -> aiosqlite.Connection:
-        return await aiosqlite.connect(database=self.url.netloc or self.url.path, **self.options)
+        return await aiosqlite.connect(database=self.url.path, **self.options)
 
     async def release(self, conn: aiosqlite.Connection):
         await conn.commit()
