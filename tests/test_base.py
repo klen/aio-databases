@@ -18,6 +18,7 @@ def test_database():
     with pytest.raises(ValueError):
         Database('unknown://db.sqlite')
 
+    assert Database('dummy://unknown')
     assert Database('mysql://db.sqlite')
     assert Database('sqlite://db.sqlite')
     assert Database('postgresql://db.sqlite')

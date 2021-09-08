@@ -229,6 +229,8 @@ class ABCDatabaseBackend(abc.ABC):
 #  Import available backends
 #  -------------------------
 
+from ._dummy import Backend as DummyBackend  # A dummy backend for testing  # noqa
+
 try:
     from ._aiosqlite import Backend as AIOSQLiteBackend  # noqa
 except ImportError:
