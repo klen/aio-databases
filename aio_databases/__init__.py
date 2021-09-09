@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 
-__version__ = '0.3.8'
+__version__ = '0.4.0'
 
 
 logger: logging.Logger = logging.getLogger('aio-databases')
