@@ -9,6 +9,11 @@ BACKEND_PARAMS = {
     'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
     'aiosqlite': ('aiosqlite:///:memory:', {}),
     'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
+    'trio-mysql': ('trio-mysql://root@127.0.0.1:3306/tests', {}),
+
+    # there is a separate test for triopg
+    #  'triopg': ('triopg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
+
     # Doesnt supports python 3.9
     #  'aioodbc': ('aioodbc://localhost', {
     #      'dsn': 'Driver=/usr/local/lib/libsqlite3odbc.dylib;Database=db.sqlite',
@@ -17,10 +22,13 @@ BACKEND_PARAMS = {
 }
 
 
-@pytest.fixture(scope='session')
-def aiolib():
+@pytest.fixture(scope='session', params=[
+    pytest.param(('asyncio', {'use_uvloop': False}), id='asyncio'),
+    'trio'
+])
+def aiolib(request):
     """Support asyncio only. Disable uvloop on tests it brokes breakpoints."""
-    return ('asyncio', {'use_uvloop': False})
+    return request.param
 
 
 @pytest.fixture(scope='session', params=[name for name in BACKEND_PARAMS])
@@ -33,7 +41,7 @@ def param(backend):
     if backend in {'aiosqlite', 'aioodbc'}:
         return lambda: '?'
 
-    if backend in ('aiomysql', 'aiopg'):
+    if backend in ('aiomysql', 'aiopg', 'trio-mysql'):
         return lambda: '%s'
 
     gen = (f"${n}" for n in range(1, 10))
@@ -41,8 +49,14 @@ def param(backend):
 
 
 @pytest.fixture
-async def db(backend):
+async def db(backend, aiolib):
     from aio_databases import Database
+
+    if aiolib[0] == 'trio' and backend not in {'trio-mysql', 'triopg'}:
+        yield pytest.skip()
+
+    if aiolib[0] == 'asyncio' and backend not in {'aiomysql', 'aiopg', 'aiosqlite', 'asyncpg'}:
+        yield pytest.skip()
 
     url, params = BACKEND_PARAMS[backend]
     async with Database(url, **params) as db:

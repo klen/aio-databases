@@ -4,6 +4,12 @@ from pypika_orm import Manager
 
 
 @pytest.fixture
+def aiolib():
+    """There is only backend for asyncio."""
+    return ('asyncio', {'use_uvloop': False})
+
+
+@pytest.fixture
 def backend():
     return 'aiosqlite'
 

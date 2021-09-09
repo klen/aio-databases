@@ -16,7 +16,10 @@ async def test_base(db):
     assert res == 1
 
 
-async def test_child_tasks(db):
+async def test_child_tasks(db, aiolib):
+    if aiolib[0] == 'trio':
+        return pytest.skip()
+
     res = await db.fetchval('select 1')
     assert res == 1
 

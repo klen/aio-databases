@@ -23,7 +23,6 @@ async def test_base(db, param):
 
     res = await db.fetchone(f"select (2 * {ph}) res", 2)
     assert tuple(res) == (4,)
-    assert isinstance(res, db.backend.record_cls)
 
     res = await db.fetchval(f"select 2 + {ph}", 2)
     assert res == 4
@@ -31,6 +30,7 @@ async def test_base(db, param):
 
 async def test_all(db, User, manager, schema):
     UserManager = manager(User)
+    await db.execute(UserManager.delete())
 
     async with db.transaction() as main_trans:
         assert main_trans
@@ -56,7 +56,7 @@ async def test_all(db, User, manager, schema):
 
     [user] = res
     assert user
-    assert user['id'] == 1
+    assert user['id']
     assert user['name'] == 'Jim'
     assert user['fullname'] == 'Jim Jones'
 
@@ -66,6 +66,7 @@ async def test_all(db, User, manager, schema):
 
 async def test_execute_many(db, User, manager, schema, param):
     UserManager = manager(User)
+    await db.execute(UserManager.delete())
     qs = UserManager.insert(name=Parameter(param()), fullname=Parameter(param()))
     await db.executemany(qs, ('Jim', 'Jim Jones'), ('Tom', 'Tom Smith'))
     res = await db.fetchall(UserManager.select())

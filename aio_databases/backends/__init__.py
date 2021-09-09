@@ -8,7 +8,6 @@ import asyncio
 from urllib.parse import SplitResult, parse_qsl
 
 from .. import logger
-from ..record import Record
 
 
 BACKENDS = []
@@ -76,6 +75,7 @@ class ABCTransaction(abc.ABC):
 class ABCConnection(abc.ABC):
 
     transaction_cls: t.ClassVar[t.Type[ABCTransaction]]
+    lock_cls: t.Type[asyncio.Lock] = asyncio.Lock
 
     __slots__ = 'database', 'logger', 'transactions', '_conn', '_lock'
 
@@ -84,7 +84,7 @@ class ABCConnection(abc.ABC):
         self.logger: logging.Logger = database.logger
         self.transactions: t.List[ABCTransaction] = []
         self._conn = None
-        self._lock: asyncio.Lock = asyncio.Lock()
+        self._lock: asyncio.Lock = self.lock_cls()
 
     @property
     def conn(self):
@@ -185,7 +185,6 @@ class ABCDatabaseBackend(abc.ABC):
     name: t.ClassVar[str]
     db_type: t.ClassVar[str]
 
-    record_cls = Record
     connection_cls: t.ClassVar[t.Type[ABCConnection]]
 
     __slots__ = 'url', 'logger', 'options'
@@ -253,5 +252,15 @@ except ImportError:
 
 try:
     from ._aioodbc import Backend as AIOODBCBackend  # noqa
+except ImportError:
+    pass
+
+try:
+    from ._trio_mysql import Backend as TrioMySQLBackend  # noqa
+except ImportError:
+    pass
+
+try:
+    from ._triopg import Backend as TrioPGBackend  # noqa
 except ImportError:
     pass

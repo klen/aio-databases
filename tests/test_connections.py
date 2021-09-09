@@ -3,7 +3,11 @@ import asyncio
 import pytest
 
 
-async def test_connection(db):
+async def test_connection(db, aiolib):
+    # TODO: Support trio
+    if aiolib[0] == 'trio':
+        return pytest.skip()
+
     c1 = db.connection()
     c2 = db.connection(False)
     c3 = db.connection(True)
@@ -31,7 +35,11 @@ async def test_connection_context(db):
 
 
 @pytest.mark.parametrize('backend', ['aiomysql', 'aiopg', 'asyncpg'])
-async def test_pool(db):
+async def test_pool(db, aiolib):
+    # TODO: Support trio
+    if aiolib[0] == 'trio':
+        return pytest.skip()
+
     assert db.backend.pool
 
     async def process(sql):

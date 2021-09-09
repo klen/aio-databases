@@ -10,10 +10,13 @@ PostgreSQL, MySQL).
 ## Features
 
 * Has no dependencies (except databases drivers)
+* Supports [asyncio](https://docs.python.org/3/library/asyncio.html) and [trio](https://github.com/python-trio/trio)
 * Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
   [aiomysql](https://github.com/aio-libs/aiomysql),
   [aiopg](https://github.com/aio-libs/aiopg),
   [asyncpg](https://github.com/MagicStack/asyncpg)
+  [triopg](https://github.com/python-trio/triopg)
+  [trio_mysql](https://github.com/python-trio/trio-mysql)
 * Manage pools of connections
 * Manage transactions
 
@@ -33,17 +36,19 @@ You have to choose and install the required database drivers with:
 
 ```shell
 # To support SQLite
-$ pip install aio-databases[aiosqlite]
+$ pip install aio-databases[aiosqlite]  # asyncio
 
 # To support MySQL
-$ pip install aio-databases[aiomysql]
+$ pip install aio-databases[aiomysql]   # asyncio
+$ pip install aio-databases[trio_mysql] # trio
 
 # To support PostgreSQL (choose one)
-$ pip install aio-databases[aiopg]
-$ pip install aio-databases[asyncpg]
+$ pip install aio-databases[aiopg]      # asyncio
+$ pip install aio-databases[asyncpg]    # asyncio
+$ pip install aio-databases[triopg]     # trio
 
 # To support ODBC (alpha state)
-$ pip install aio-databases[aioodbc]
+$ pip install aio-databases[aioodbc]    # asyncio
 ```
 
 

@@ -29,6 +29,9 @@ def test_database():
     assert Database('asyncpg://db.sqlite')
     assert Database('aioodbc://localhost', dsn='Driver=SQLite;Database=db.sqlite')
 
+    assert Database('trio-mysql://localhost')
+    assert Database('triopg://localhost')
+
 
 def test_record():
     from aio_databases.record import Record

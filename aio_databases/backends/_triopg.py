@@ -3,6 +3,9 @@ from __future__ import annotations
 import typing as t
 
 import asyncpg
+import trio
+import trio_asyncio
+import triopg
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
 
@@ -14,15 +17,18 @@ class Transaction(ABCTransaction):
     @property
     def trans(self) -> asyncpg.transactions.Transaction:
         if self._trans is None:
-            self._trans = self.connection.conn.transaction()
+            self._trans = self.connection.conn._asyncpg_conn.transaction()
         return self._trans
 
+    @trio_asyncio.aio_as_trio
     async def _start(self):
         return await self.trans.start()
 
+    @trio_asyncio.aio_as_trio
     async def _commit(self):
         return await self.trans.commit()
 
+    @trio_asyncio.aio_as_trio
     async def _rollback(self):
         return await self.trans.rollback()
 
@@ -30,35 +36,39 @@ class Transaction(ABCTransaction):
 class Connection(ABCConnection):
 
     transaction_cls = Transaction
+    lock_cls = trio.Lock
 
+    @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> t.Any:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         return await conn.execute(query, *params, **options)
 
+    @trio_asyncio.aio_as_trio
     async def _executemany(self, query: str, *params, **options) -> t.Any:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         return await conn.executemany(query, params, **options)
 
+    @trio_asyncio.aio_as_trio
     async def _fetchall(self, query: str, *params, **options) -> t.List[asyncpg.Record]:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         return await conn.fetch(query, *params, **options)
 
     async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[asyncpg.Record]:
-        conn: asyncpg.Connection = self.conn
-        async with conn.transaction():
-            cur = await conn.cursor(query, *params)
-            return await cur.fetch(size)
+        res = await self.fetchall(query, *params, **options)
+        return res[:size]
 
+    @trio_asyncio.aio_as_trio
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[asyncpg.Record]:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         return await conn.fetchrow(query, *params, **options)
 
+    @trio_asyncio.aio_as_trio
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         return await conn.fetchval(query, *params, column=column, **options)
 
     async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
-        conn: asyncpg.Connection = self.conn
+        conn = self.conn
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):
                 yield rec
@@ -66,14 +76,14 @@ class Connection(ABCConnection):
 
 class Backend(ABCDatabaseBackend):
 
-    name = 'asyncpg'
+    name = 'triopg'
     db_type = 'postgresql'
     connection_cls = Connection
 
-    pool: t.Optional[asyncpg.Pool] = None
+    pool: t.Optional[triopg._triopg.TrioPoolProxy] = None
 
     async def connect(self) -> None:
-        self.pool: asyncpg.Pool = await asyncpg.create_pool(
+        self.pool: triopg._triopg.TrioPoolProxy = triopg.create_pool(
             **self.options,
             host=self.url.hostname,
             port=self.url.port,
@@ -81,6 +91,7 @@ class Backend(ABCDatabaseBackend):
             password=self.url.password,
             database=self.url.path.strip('/'),
         )
+        await self.pool.__aenter__()
 
     async def disconnect(self) -> None:
         pool = self.pool
@@ -88,12 +99,17 @@ class Backend(ABCDatabaseBackend):
         self.pool = None
         await pool.close()
 
-    async def acquire(self) -> asyncpg.Connection:
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
-        return await pool.acquire()
+    @trio_asyncio.aio_as_trio
+    async def acquire(self) -> triopg._triopg.TrioConnectionProxy:
+        assert self.pool is not None, "Database is not connected"
+        pool = self.pool._asyncpg_pool
+        conn = triopg._triopg.TrioConnectionProxy()
+        conn._asyncpg_conn = await pool.acquire()
+        return conn
 
-    async def release(self, conn: asyncpg.Connection):
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
+    @trio_asyncio.aio_as_trio
+    async def release(self, conn: triopg._triopg.TrioConnectionProxy):
+        assert self.pool is not None, "Database is not connected"
+        conn = conn._asyncpg_conn
+        pool = self.pool._asyncpg_pool
         await pool.release(conn)
