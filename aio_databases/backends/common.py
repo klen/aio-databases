@@ -43,32 +43,32 @@ class Connection(ABCConnection):
     transaction_cls = Transaction
 
     async def _execute(self, query: str, *params, **options) -> t.Any:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             if cursor.lastrowid == 0:
                 return cursor.rowcount
             return cursor.lastrowid
 
     async def _executemany(self, query: str, *params, **options) -> t.Any:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.executemany(query, params, **options)
 
     async def _fetchall(self, query: str, *params, **options) -> t.List[t.Mapping]:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             rows = await cursor.fetchall()
             desc = cursor.description
             return [Record(row, desc) for row in rows]
 
     async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[t.Mapping]:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             rows = await cursor.fetchmany(size)
             desc = cursor.description
             return [Record(row, desc) for row in rows]
 
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[t.Mapping]:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             row = await cursor.fetchone()
             if row is None:
@@ -76,7 +76,7 @@ class Connection(ABCConnection):
             return Record(row, cursor.description)
 
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             row = await cursor.fetchone()
             if row is None:
@@ -84,7 +84,7 @@ class Connection(ABCConnection):
             return row[column]
 
     async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[Record]:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
             desc = cursor.description
             while True:
@@ -92,3 +92,26 @@ class Connection(ABCConnection):
                 if row is None:
                     break
                 yield Record(row, desc)
+
+
+class PGReplacer:
+
+    __slots__ = ('num',)
+
+    def __init__(self):
+        self.num = 0
+
+    def __call__(self, match):
+        self.num += 1
+        return f"{match.group(1)}${self.num}"
+
+
+def pg_parse_status(status: str) -> t.Union[str, int]:
+    operation, params = status.split(' ', 1)
+    if operation in {'INSERT'}:
+        return params.split()[0]
+
+    if operation in {'UPDATE', 'DELETE'}:
+        return int(params.split()[0])
+
+    return status

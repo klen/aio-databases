@@ -11,7 +11,7 @@ from .common import Connection as Connection_
 class Connection(Connection_):
 
     async def _executemany(self, query: str, *params, **options) -> t.Any:
-        async with self.conn.cursor() as cursor:
+        async with self._conn.cursor() as cursor:
             for args_ in params:
                 await cursor.execute(query, args_, **options)
 

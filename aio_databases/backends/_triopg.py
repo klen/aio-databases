@@ -8,6 +8,7 @@ import trio_asyncio
 import triopg
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
+from .common import PGReplacer, pg_parse_status
 
 
 class Transaction(ABCTransaction):
@@ -17,7 +18,7 @@ class Transaction(ABCTransaction):
     @property
     def trans(self) -> asyncpg.transactions.Transaction:
         if self._trans is None:
-            self._trans = self.connection.conn._asyncpg_conn.transaction()
+            self._trans = self.connection._conn._asyncpg_conn.transaction()
         return self._trans
 
     @trio_asyncio.aio_as_trio
@@ -40,33 +41,33 @@ class Connection(ABCConnection):
 
     @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> t.Any:
-        status = await self.conn.execute(query, *params, **options)
-        return parse_status(status)
+        status = await self._conn.execute(query, *params, **options)
+        return pg_parse_status(status)
 
     @trio_asyncio.aio_as_trio
     async def _executemany(self, query: str, *params, **options) -> t.Any:
-        return await self.conn.executemany(query, params, **options)
+        return await self._conn.executemany(query, params, **options)
 
     @trio_asyncio.aio_as_trio
     async def _fetchall(self, query: str, *params, **options) -> t.List[asyncpg.Record]:
-        return await self.conn.fetch(query, *params, **options)
+        return await self._conn.fetch(query, *params, **options)
 
     @trio_asyncio.aio_as_trio
     async def _fetchmany(self, size: int, query: str,
                          *params, **options) -> t.List[asyncpg.Record]:
-        res = await self.conn.fetch(query, *params, **options)
+        res = await self._conn.fetch(query, *params, **options)
         return res[:size]
 
     @trio_asyncio.aio_as_trio
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[asyncpg.Record]:
-        return await self.conn.fetchrow(query, *params, **options)
+        return await self._conn.fetchrow(query, *params, **options)
 
     @trio_asyncio.aio_as_trio
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
-        return await self.conn.fetchval(query, *params, column=column, **options)
+        return await self._conn.fetchval(query, *params, column=column, **options)
 
     async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
-        conn = self.conn
+        conn = self._conn
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):
                 yield rec
@@ -83,7 +84,7 @@ class Backend(ABCDatabaseBackend):
     def __convert_sql__(self, sql: t.Any) -> str:
         sql = str(sql)
         if self.convert_params:
-            sql = RE_PARAM.sub(Replacer(), sql)
+            sql = RE_PARAM.sub(PGReplacer(), sql)
 
         return sql
 
@@ -118,26 +119,3 @@ class Backend(ABCDatabaseBackend):
         conn = conn._asyncpg_conn
         pool = self.pool._asyncpg_pool
         await pool.release(conn)
-
-
-class Replacer:
-
-    __slots__ = ('num',)
-
-    def __init__(self):
-        self.num = 0
-
-    def __call__(self, match):
-        self.num += 1
-        return f"{match.group(1)}${self.num}"
-
-
-def parse_status(status: str) -> t.Union[str, int]:
-    operation, params = status.split(' ', 1)
-    if operation in {'INSERT'}:
-        return params.split()[0]
-
-    if operation in {'UPDATE', 'DELETE'}:
-        return int(params.split()[0])
-
-    return status

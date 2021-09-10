@@ -25,6 +25,16 @@ async def test_connection(db, aiolib):
     assert len(set(done)) == 4
 
 
+async def test_acquire_release(db):
+    conn = db.connection()
+    await conn.acquire()
+    await conn.acquire()
+    assert await conn.fetchval('select 42') == 42
+    assert conn.is_ready
+    await conn.release()
+    await conn.release()
+
+
 async def test_connection_context(db):
     async with db.connection() as conn:
         assert await conn.fetchval('select 1')

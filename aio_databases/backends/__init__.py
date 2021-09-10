@@ -89,11 +89,6 @@ class ABCConnection(abc.ABC):
         self._lock: asyncio.Lock = self.lock_cls()
 
     @property
-    def conn(self):
-        assert self.is_ready, "Connection is not acquired"
-        return self._conn
-
-    @property
     def is_ready(self) -> bool:
         return self._conn is not None
 
