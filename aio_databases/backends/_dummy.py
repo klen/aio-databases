@@ -1,18 +1,7 @@
 import typing as t
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
-
-
-class Transaction(ABCTransaction):
-
-    async def _start(self) -> t.Any:
-        return None
-
-    async def _commit(self) -> t.Any:
-        return None
-
-    async def _rollback(self) -> t.Any:
-        return None
+from . import ABCDatabaseBackend, ABCConnection
+from .common import Transaction
 
 
 class Connection(ABCConnection):

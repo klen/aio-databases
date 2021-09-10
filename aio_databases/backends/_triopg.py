@@ -40,34 +40,30 @@ class Connection(ABCConnection):
 
     @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> t.Any:
-        conn = self.conn
-        status = await conn.execute(query, *params, **options)
+        status = await self.conn.execute(query, *params, **options)
         return parse_status(status)
 
     @trio_asyncio.aio_as_trio
     async def _executemany(self, query: str, *params, **options) -> t.Any:
-        conn = self.conn
-        return await conn.executemany(query, params, **options)
+        return await self.conn.executemany(query, params, **options)
 
     @trio_asyncio.aio_as_trio
     async def _fetchall(self, query: str, *params, **options) -> t.List[asyncpg.Record]:
-        conn = self.conn
-        return await conn.fetch(query, *params, **options)
+        return await self.conn.fetch(query, *params, **options)
 
+    @trio_asyncio.aio_as_trio
     async def _fetchmany(self, size: int, query: str,
                          *params, **options) -> t.List[asyncpg.Record]:
-        res = await self.fetchall(query, *params, **options)
+        res = await self.conn.fetch(query, *params, **options)
         return res[:size]
 
     @trio_asyncio.aio_as_trio
     async def _fetchone(self, query: str, *params, **options) -> t.Optional[asyncpg.Record]:
-        conn = self.conn
-        return await conn.fetchrow(query, *params, **options)
+        return await self.conn.fetchrow(query, *params, **options)
 
     @trio_asyncio.aio_as_trio
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
-        conn = self.conn
-        return await conn.fetchval(query, *params, column=column, **options)
+        return await self.conn.fetchval(query, *params, column=column, **options)
 
     async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
         conn = self.conn

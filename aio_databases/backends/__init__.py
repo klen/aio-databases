@@ -114,40 +114,48 @@ class ABCConnection(abc.ABC):
 
     __aexit__ = release
 
-    def execute(self, query: t.Any, *params, **options) -> t.Awaitable:
+    async def execute(self, query: t.Any, *params, **options) -> t.Any:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._execute(sql, *params, **options)
+        async with self._lock:
+            return await self._execute(sql, *params, **options)
 
-    def executemany(self, query: t.Any, *params, **options) -> t.Awaitable:
+    async def executemany(self, query: t.Any, *params, **options) -> t.Any:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._executemany(sql, *params, **options)
+        async with self._lock:
+            return await self._executemany(sql, *params, **options)
 
-    def fetchall(self, query: t.Any, *params, **options) -> t.Awaitable:
+    async def fetchall(self, query: t.Any, *params, **options) -> t.List[t.Mapping]:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._fetchall(sql, *params, **options)
+        async with self._lock:
+            return await self._fetchall(sql, *params, **options)
 
-    def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.Awaitable:
+    async def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.List[t.Mapping]:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._fetchmany(size, sql, *params, **options)
+        async with self._lock:
+            return await self._fetchmany(size, sql, *params, **options)
 
-    def fetchone(self, query: t.Any, *params, **options) -> t.Awaitable:
+    async def fetchone(self, query: t.Any, *params, **options) -> t.Optional[t.Mapping]:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._fetchone(sql, *params, **options)
+        async with self._lock:
+            return await self._fetchone(sql, *params, **options)
 
-    def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Awaitable:
+    async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._fetchval(sql, *params, column=column, **options)
+        async with self._lock:
+            return await self._fetchval(sql, *params, column=column, **options)
 
-    def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
+    async def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
         sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
-        return self._iterate(sql, *params, **options)
+        async with self._lock:
+            async for res in self._iterate(sql, *params, **options):
+                yield res
 
     @abc.abstractmethod
     async def _execute(self, query: str, *params, **options) -> t.Any:
