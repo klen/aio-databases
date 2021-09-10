@@ -63,6 +63,14 @@ async def test_all(db, User, manager, schema):
     assert res is None
 
 
+async def test_execute(db, User, manager, schema):
+    UserManager = manager(User)
+    await db.execute(UserManager.insert(name='Jim', fullname='Tom Smith'))
+    await db.execute(UserManager.insert(name='Jim', fullname='Tom Smith'))
+    res = await db.execute(UserManager.update().set(User.name, 'Tom'))
+    assert res == 2
+
+
 async def test_execute_many(db, User, manager, schema):
     UserManager = manager(User)
     await db.execute(UserManager.delete())

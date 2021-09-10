@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing as t
 
 import asyncpg
+from re import compile as re
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 
@@ -33,7 +34,8 @@ class Connection(ABCConnection):
 
     async def _execute(self, query: str, *params, **options) -> t.Any:
         conn: asyncpg.Connection = self.conn
-        return await conn.execute(query, *params, **options)
+        status = await conn.execute(query, *params, **options)
+        return parse_status(status)
 
     async def _executemany(self, query: str, *params, **options) -> t.Any:
         conn: asyncpg.Connection = self.conn
@@ -43,7 +45,8 @@ class Connection(ABCConnection):
         conn: asyncpg.Connection = self.conn
         return await conn.fetch(query, *params, **options)
 
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[asyncpg.Record]:
+    async def _fetchmany(self, size: int, query: str,
+                         *params, **options) -> t.List[asyncpg.Record]:
         conn: asyncpg.Connection = self.conn
         async with conn.transaction():
             cur = await conn.cursor(query, *params)
@@ -108,7 +111,7 @@ class Backend(ABCDatabaseBackend):
 
 class Replacer:
 
-    __slots__ = 'num',
+    __slots__ = ('num',)
 
     def __init__(self):
         self.num = 0
@@ -116,3 +119,14 @@ class Replacer:
     def __call__(self, match):
         self.num += 1
         return f"{match.group(1)}${self.num}"
+
+
+def parse_status(status: str) -> t.Union[str, int]:
+    operation, params = status.split(' ', 1)
+    if operation in {'INSERT'}:
+        return params.split()[0]
+
+    if operation in {'UPDATE', 'DELETE'}:
+        return int(params.split()[0])
+
+    return status
