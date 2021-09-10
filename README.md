@@ -14,8 +14,8 @@ PostgreSQL, MySQL).
 * Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
   [aiomysql](https://github.com/aio-libs/aiomysql),
   [aiopg](https://github.com/aio-libs/aiopg),
-  [asyncpg](https://github.com/MagicStack/asyncpg)
-  [triopg](https://github.com/python-trio/triopg)
+  [asyncpg](https://github.com/MagicStack/asyncpg),
+  [triopg](https://github.com/python-trio/triopg),
   [trio_mysql](https://github.com/python-trio/trio-mysql)
 * Manage pools of connections
 * Manage transactions
