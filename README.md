@@ -54,15 +54,19 @@ $ pip install aio-databases[aioodbc]    # asyncio
 
 ## Usage
 
-* Init a database
+### Init a database
 
 ```python
     from aio_databases import Database
 
-    db = Database('sqlite:///:memory:')
+    # Initialize a database
+    db = Database('sqlite:///:memory:')  # with default driver
+
+    # Flesh out the driver 
+    db = Database('aiosqlite:///:memory:', **driver_params)
 ```
 
-* Prepare the database to work
+### Prepare the database to work
 
 ```python
     # Initialize a database's pool
@@ -80,7 +84,7 @@ $ pip install aio-databases[aioodbc]    # asyncio
         await my_main_coroutine()
 ```
 
-* Run SQL queries
+### Run SQL queries
 
 ```python
     await db.execute('select $1', '1')
@@ -106,8 +110,19 @@ $ pip install aio-databases[aioodbc]    # asyncio
 
 ```
 
-* Manage connections (please ensure that you have released a connection after
-  acquiring)
+### Manage connections
+
+By default the database opens and closes a connection for a query.
+
+```python
+    # Connection will be acquired and released for the query
+    await db.fetchone('select %s', 42)
+
+    # Connection will be acquired and released again
+    await db.fetchone('select %s', 77)
+```
+
+Manually open and close a connection
 
 ```python
 
@@ -117,18 +132,27 @@ $ pip install aio-databases[aioodbc]    # asyncio
     # or use the existing which one is binded for the current task
     conn = db.connection(False)
 
-    # Acquire DB connection
+    # Acquire the connection
     await conn.acquire()
     # ...
-    # Release DB connection
+    # Release the connection
     await conn.relese()
 
     # an alternative (acquire/release as an async context)
-    async with db.connection():
+    async with conn:
         # ...
 ```
 
-* Use transactions
+If there any connection already `db.method` would be using the current one
+```python
+    async with db.connection(): # connection would be acquired here
+        await db.fetchone('select %s', 42)  # the connection is used
+        await db.fetchone('select %s', 77)  # the connection is used
+
+    # the connection released there
+```
+
+### Manage transactions
 
 ```python
     async with db.transaction() as trans1:

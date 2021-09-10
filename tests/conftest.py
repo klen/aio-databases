@@ -49,7 +49,8 @@ async def db(backend, aiolib):
 
     url, params = BACKEND_PARAMS[backend]
     async with Database(url, **params) as db:
-        yield db
+        async with db.connection():
+            yield db
 
 
 @pytest.fixture(scope='session', autouse=True)

@@ -4,6 +4,10 @@ import pytest
 
 
 async def test_base(db):
+    # Close current connection
+    async with db.connection(False):
+        pass
+
     with pytest.raises(RuntimeError):
         async with db.transaction():
             assert await db.fetchval('select 1')
