@@ -19,6 +19,11 @@ async def test_base(db):
 
     assert res == 1
 
+    with pytest.raises(RuntimeError):
+        async with db.connection(False) as conn:
+            async with db.transaction():
+                await conn.release()
+
 
 async def test_child_tasks(db, aiolib):
     if aiolib[0] == 'trio':

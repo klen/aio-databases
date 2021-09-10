@@ -53,7 +53,7 @@ class ABCTransaction(abc.ABC):
     async def start(self):
         connection = self.connection
         if not connection.is_ready:
-            raise RuntimeError('There is no an acquired connection to make a transaction')
+            raise RuntimeError('There is no an acquired connection to start a transaction')
 
         async with connection._lock:
             await self._start()
@@ -61,6 +61,8 @@ class ABCTransaction(abc.ABC):
 
     async def commit(self):
         connection = self.connection
+        if not connection.is_ready:
+            raise RuntimeError('There is no an acquired connection to commit the transaction')
         async with connection._lock:
             await self._commit()
             connection.transactions.remove(self)
@@ -68,6 +70,8 @@ class ABCTransaction(abc.ABC):
 
     async def rollback(self):
         connection = self.connection
+        if not connection.is_ready:
+            raise RuntimeError('There is no an acquired connection to rollback the transaction')
         async with connection._lock:
             await self._rollback()
             connection.transactions.remove(self)
