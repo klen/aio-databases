@@ -85,7 +85,7 @@ class ABCConnection(abc.ABC):
         self.database = database
         self.logger: logging.Logger = database.logger
         self.transactions: t.List[ABCTransaction] = []
-        self._conn = None
+        self._conn: t.Any = None
         self._lock: asyncio.Lock = self.lock_cls()
 
     @property
