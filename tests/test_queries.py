@@ -11,20 +11,19 @@ async def schema(db, User, manager):
     await db.execute(UserManager.drop_table().if_exists())
 
 
-async def test_base(db, param):
-    ph = param()
-    await db.execute(f"select {ph}", '1')
+async def test_base(db):
+    await db.execute("select %s", '1')
 
-    res = await db.fetchall(f"select (2 * {ph}) res", 2)
+    res = await db.fetchall("select (2 * %s) res", 2)
     assert [tuple(r) for r in res] == [(4,)]
 
-    res = await db.fetchmany(10, f"select (2 * {ph}) res", 2)
+    res = await db.fetchmany(10, "select (2 * %s) res", 2)
     assert [tuple(r) for r in res] == [(4,)]
 
-    res = await db.fetchone(f"select (2 * {ph}) res", 2)
+    res = await db.fetchone("select (2 * %s) res", 2)
     assert tuple(res) == (4,)
 
-    res = await db.fetchval(f"select 2 + {ph}", 2)
+    res = await db.fetchval("select 2 + %s", 2)
     assert res == 4
 
 
@@ -64,10 +63,10 @@ async def test_all(db, User, manager, schema):
     assert res is None
 
 
-async def test_execute_many(db, User, manager, schema, param):
+async def test_execute_many(db, User, manager, schema):
     UserManager = manager(User)
     await db.execute(UserManager.delete())
-    qs = UserManager.insert(name=Parameter(param()), fullname=Parameter(param()))
+    qs = UserManager.insert(name=Parameter('%s'), fullname=Parameter('%s'))
     await db.executemany(qs, ('Jim', 'Jim Jones'), ('Tom', 'Tom Smith'))
     res = await db.fetchall(UserManager.select())
     assert res
@@ -77,9 +76,9 @@ async def test_execute_many(db, User, manager, schema, param):
     assert u2['name'] == 'Tom'
 
 
-async def test_iterate(db, User, manager, schema, param):
+async def test_iterate(db, User, manager, schema):
     UserManager = manager(User)
-    qs = UserManager.insert(name=Parameter(param()), fullname=Parameter(param()))
+    qs = UserManager.insert(name=Parameter('%s'), fullname=Parameter('%s'))
     await db.executemany(qs, ('Jim', 'Jim Jones'), ('Tom', 'Tom Smith'))
 
     async for rec in db.iterate(UserManager.select()):

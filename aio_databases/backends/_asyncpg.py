@@ -4,7 +4,7 @@ import typing as t
 
 import asyncpg
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 
 
 class Transaction(ABCTransaction):
@@ -72,6 +72,13 @@ class Backend(ABCDatabaseBackend):
 
     pool: t.Optional[asyncpg.Pool] = None
 
+    def __convert_sql__(self, sql: t.Any) -> str:
+        sql = str(sql)
+        if self.convert_params:
+            sql = RE_PARAM.sub(Replacer(), sql)
+
+        return sql
+
     async def connect(self) -> None:
         self.pool: asyncpg.Pool = await asyncpg.create_pool(
             **self.options,
@@ -97,3 +104,15 @@ class Backend(ABCDatabaseBackend):
         pool = self.pool
         assert pool is not None, "Database is not connected"
         await pool.release(conn)
+
+
+class Replacer:
+
+    __slots__ = 'num',
+
+    def __init__(self):
+        self.num = 0
+
+    def __call__(self, match):
+        self.num += 1
+        return f"{match.group(1)}${self.num}"

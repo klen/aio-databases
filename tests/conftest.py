@@ -7,8 +7,9 @@ from pypika_orm import Manager, Model, fields
 BACKEND_PARAMS = {
     'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2}),
     'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
-    'aiosqlite': ('aiosqlite:///:memory:', {}),
-    'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
+    'aiosqlite': ('aiosqlite:///:memory:', {'convert_params': True}),
+    'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {
+        'min_size': 2, 'max_size': 2, 'convert_params': True}),
     'trio-mysql': ('trio-mysql://root@127.0.0.1:3306/tests', {}),
 
     # there is a separate test for triopg
@@ -34,18 +35,6 @@ def aiolib(request):
 @pytest.fixture(scope='session', params=[name for name in BACKEND_PARAMS])
 def backend(request):
     return request.param
-
-
-@pytest.fixture
-def param(backend):
-    if backend in {'aiosqlite', 'aioodbc'}:
-        return lambda: '?'
-
-    if backend in ('aiomysql', 'aiopg', 'trio-mysql'):
-        return lambda: '%s'
-
-    gen = (f"${n}" for n in range(1, 10))
-    return lambda: next(gen)
 
 
 @pytest.fixture

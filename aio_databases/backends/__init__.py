@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import typing as t
 
-import logging
 import abc
 import asyncio
+import logging
+from re import compile as re
 from urllib.parse import SplitResult, parse_qsl
 
 from .. import logger
@@ -16,6 +17,7 @@ SHORTCUTS = {
     'postgressql': 'postgresql',
     'sqllite': 'sqlite',
 }
+RE_PARAM = re(r'([^%])(%s)')
 
 
 class ABCTransaction(abc.ABC):
@@ -113,37 +115,37 @@ class ABCConnection(abc.ABC):
     __aexit__ = release
 
     def execute(self, query: t.Any, *params, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._execute(sql, *params, **options)
 
     def executemany(self, query: t.Any, *params, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._executemany(sql, *params, **options)
 
     def fetchall(self, query: t.Any, *params, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._fetchall(sql, *params, **options)
 
     def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._fetchmany(size, sql, *params, **options)
 
     def fetchone(self, query: t.Any, *params, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._fetchone(sql, *params, **options)
 
     def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Awaitable:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._fetchval(sql, *params, column=column, **options)
 
     def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
-        sql = str(query)
+        sql = self.database.__convert_sql__(query)
         self.logger.debug((sql, *params))
         return self._iterate(sql, *params, **options)
 
@@ -187,11 +189,13 @@ class ABCDatabaseBackend(abc.ABC):
 
     connection_cls: t.ClassVar[t.Type[ABCConnection]]
 
-    __slots__ = 'url', 'logger', 'options'
+    __slots__ = 'url', 'logger', 'convert_params', 'options'
 
-    def __init__(self, url: SplitResult, logger: logging.Logger = logger, **options):
+    def __init__(self, url: SplitResult, logger: logging.Logger = logger,
+                 convert_params: bool = False, **options):
         self.url = url
         self.logger = logger
+        self.convert_params = convert_params
         self.options = dict(parse_qsl(url.query), **options)
 
     def __init_subclass__(cls, *args, **kwargs):
@@ -204,6 +208,9 @@ class ABCDatabaseBackend(abc.ABC):
 
     def __repr__(self):
         return f"<Backend {self}>"
+
+    def __convert_sql__(self, sql: t.Any) -> str:
+        return str(sql)
 
     @abc.abstractmethod
     async def connect(self) -> None:

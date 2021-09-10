@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import aioodbc
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 from ..record import Record
 
 
@@ -130,6 +130,12 @@ class Backend(ABCDatabaseBackend):
     def __init__(self, *args, db_type: str = None, **kwargs):
         self.db_type = db_type or self.db_type  # type: ignore
         super(Backend, self).__init__(*args, **kwargs)
+
+    def __convert_sql__(self, sql: t.Any) -> str:
+        sql = str(sql)
+        if self.convert_params:
+            sql = RE_PARAM.sub(r'\1?', sql)
+        return sql
 
     async def connect(self) -> None:
         self.pool = await aioodbc.create_pool(**self.options)

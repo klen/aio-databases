@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import aiosqlite
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 from ..record import Record
 
 
@@ -110,6 +110,12 @@ class Backend(ABCDatabaseBackend):
             url = url._replace(path=url.path[1:])
 
         super(Backend, self).__init__(url, isolation_level=isolation_level, **kwargs)
+
+    def __convert_sql__(self, sql: t.Any) -> str:
+        sql = str(sql)
+        if self.convert_params:
+            sql = RE_PARAM.sub(r'\1?', sql)
+        return sql
 
     async def connect(self) -> None:
         pass

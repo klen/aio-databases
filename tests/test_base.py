@@ -58,3 +58,15 @@ def test_record():
     assert list(rec.values()) == [1, 'test', 2, 'test2']
     assert list(rec.keys()) == ['id', 'name', 'id', 'name']
     assert str(rec) == "id=1 name='test' id=2 name='test2'"
+
+
+def test_params():
+    from aio_databases import Database
+
+    db = Database('asyncpg://localhost', convert_params=True)
+    assert db.backend.__convert_sql__('select "%s", %s') == 'select "$1", $2'
+    assert db.backend.__convert_sql__('select "%%s"') == 'select "%%s"'
+
+    db = Database('aiosqlite://localhost', convert_params=True)
+    assert db.backend.__convert_sql__('select "%s", %s') == 'select "?", ?'
+    assert db.backend.__convert_sql__('select "%%s"') == 'select "%%s"'
