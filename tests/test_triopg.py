@@ -13,22 +13,22 @@ async def test_base(User):
     from aio_databases import Database
 
     async with trio_asyncio.open_loop():
-        async with Database('triopg://test:test@localhost:5432/tests') as db:
+        async with Database('triopg://test:test@localhost:5432/tests', convert_params=True) as db:
             manager = Manager(db)
             UserManager = manager(User)
 
-            await db.execute('select $1', '1')
+            await db.execute('select %s', '1')
 
-            res = await db.fetchall("select (2 * $1) res", 2)
+            res = await db.fetchall("select (2 * %s) res", 2)
             assert [tuple(r) for r in res] == [(4,)]
 
-            res = await db.fetchmany(10, "select (2 * $1) res", 2)
+            res = await db.fetchmany(10, "select (2 * %s) res", 2)
             assert [tuple(r) for r in res] == [(4,)]
 
-            res = await db.fetchone("select (2 * $1) res", 2)
+            res = await db.fetchone("select (2 * %s) res", 2)
             assert tuple(res) == (4,)
 
-            res = await db.fetchval("select 2 + $1", 2)
+            res = await db.fetchval("select 2 + %s", 2)
             assert res == 4
 
             await db.execute(UserManager.drop_table().if_exists())
@@ -61,6 +61,9 @@ async def test_base(User):
             assert user['id']
             assert user['name'] == 'Jim'
             assert user['fullname'] == 'Jim Jones'
+
+            res = await db.execute(UserManager.update().set(User.name, 'Newbie'))
+            assert res == 1
 
             res = await db.fetchone(UserManager.select().where(User.id == 100))
             assert res is None

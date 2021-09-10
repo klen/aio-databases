@@ -7,7 +7,7 @@ import trio
 import trio_asyncio
 import triopg
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction
+from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 
 
 class Transaction(ABCTransaction):
@@ -41,7 +41,8 @@ class Connection(ABCConnection):
     @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> t.Any:
         conn = self.conn
-        return await conn.execute(query, *params, **options)
+        status = await conn.execute(query, *params, **options)
+        return parse_status(status)
 
     @trio_asyncio.aio_as_trio
     async def _executemany(self, query: str, *params, **options) -> t.Any:
@@ -53,7 +54,8 @@ class Connection(ABCConnection):
         conn = self.conn
         return await conn.fetch(query, *params, **options)
 
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> t.List[asyncpg.Record]:
+    async def _fetchmany(self, size: int, query: str,
+                         *params, **options) -> t.List[asyncpg.Record]:
         res = await self.fetchall(query, *params, **options)
         return res[:size]
 
@@ -81,6 +83,13 @@ class Backend(ABCDatabaseBackend):
     connection_cls = Connection
 
     pool: t.Optional[triopg._triopg.TrioPoolProxy] = None
+
+    def __convert_sql__(self, sql: t.Any) -> str:
+        sql = str(sql)
+        if self.convert_params:
+            sql = RE_PARAM.sub(Replacer(), sql)
+
+        return sql
 
     async def connect(self) -> None:
         self.pool: triopg._triopg.TrioPoolProxy = triopg.create_pool(
@@ -113,3 +122,26 @@ class Backend(ABCDatabaseBackend):
         conn = conn._asyncpg_conn
         pool = self.pool._asyncpg_pool
         await pool.release(conn)
+
+
+class Replacer:
+
+    __slots__ = ('num',)
+
+    def __init__(self):
+        self.num = 0
+
+    def __call__(self, match):
+        self.num += 1
+        return f"{match.group(1)}${self.num}"
+
+
+def parse_status(status: str) -> t.Union[str, int]:
+    operation, params = status.split(' ', 1)
+    if operation in {'INSERT'}:
+        return params.split()[0]
+
+    if operation in {'UPDATE', 'DELETE'}:
+        return int(params.split()[0])
+
+    return status
