@@ -5,12 +5,12 @@ from pypika_orm import Manager, Model, fields
 
 
 BACKEND_PARAMS = {
-    #  'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2}),
-    #  'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
-    #  'aiosqlite': ('aiosqlite:///:memory:', {'convert_params': True}),
+    'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2}),
+    'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
+    'aiosqlite': ('aiosqlite:///:memory:', {'convert_params': True}),
     'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {
         'min_size': 2, 'max_size': 2, 'convert_params': True}),
-    #  'trio-mysql': ('trio-mysql://root@127.0.0.1:3306/tests', {}),
+    'trio-mysql': ('trio-mysql://root@127.0.0.1:3306/tests', {}),
 
     # there is a separate test for triopg
     #  'triopg': ('triopg://test:test@localhost:5432/tests', {'min_size': 2, 'max_size': 2}),
