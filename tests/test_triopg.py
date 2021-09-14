@@ -63,7 +63,7 @@ async def test_base(User):
             assert user['fullname'] == 'Jim Jones'
 
             res = await db.execute(UserManager.update().set(User.name, 'Newbie'))
-            assert res == 1
+            assert res == (1, None)
 
             res = await db.fetchone(UserManager.select().where(User.id == 100))
             assert res is None

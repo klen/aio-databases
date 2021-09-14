@@ -42,12 +42,10 @@ class Connection(ABCConnection):
 
     transaction_cls = Transaction
 
-    async def _execute(self, query: str, *params, **options) -> t.Any:
+    async def _execute(self, query: str, *params, **options) -> t.Tuple[int, t.Any]:
         async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
-            if cursor.lastrowid == 0:
-                return cursor.rowcount
-            return cursor.lastrowid
+            return cursor.rowcount, cursor.lastrowid
 
     async def _executemany(self, query: str, *params, **options) -> t.Any:
         async with self._conn.cursor() as cursor:
@@ -106,12 +104,13 @@ class PGReplacer:
         return f"{match.group(1)}${self.num}"
 
 
-def pg_parse_status(status: str) -> t.Union[str, int]:
+def pg_parse_status(status: str) -> t.Union[str, t.Tuple[int, t.Any]]:
     operation, params = status.split(' ', 1)
     if operation in {'INSERT'}:
-        return params.split()[0]
+        oid, rows = params.split()
+        return int(rows), oid
 
     if operation in {'UPDATE', 'DELETE'}:
-        return int(params.split()[0])
+        return int(params.split()[0]), None
 
     return status
