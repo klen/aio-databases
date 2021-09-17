@@ -1,6 +1,6 @@
 # AIO-Databases
 
-The package gives you asycio support for a range of databases (SQLite,
+The package gives you async support for a range of databases (SQLite,
 PostgreSQL, MySQL).
 
 [![Tests Status](https://github.com/klen/aio-databases/workflows/tests/badge.svg)](https://github.com/klen/aio-databases/actions)
