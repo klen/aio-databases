@@ -28,6 +28,11 @@ class Backend(ABCDatabaseBackend):
     def __init__(self, *args, db_type: str = None, **kwargs):
         self.db_type = db_type or self.db_type  # type: ignore
         super(Backend, self).__init__(*args, **kwargs)
+        self.pool_options = {
+            name: self.options.pop(name)
+            for name in ('minsize', 'maxsize', 'pool_recycle')
+            if name in self.options
+        }
 
     def __convert_sql__(self, sql: t.Any) -> str:
         sql = str(sql)
@@ -36,7 +41,7 @@ class Backend(ABCDatabaseBackend):
         return sql
 
     async def connect(self) -> None:
-        self.pool = await aioodbc.create_pool(**self.options)
+        self.pool = await aioodbc.create_pool(**self.options, **self.pool_options)
 
     async def disconnect(self) -> None:
         pool = self.pool
@@ -47,10 +52,14 @@ class Backend(ABCDatabaseBackend):
 
     async def acquire(self) -> aioodbc.Connection:
         pool = self.pool
-        assert pool is not None, "Database is not connected"
+        if pool is None:
+            return aioodbc.connect(**self.options)
+
         return await pool.acquire()
 
     async def release(self, conn: aioodbc.Connection):
         pool = self.pool
-        assert pool is not None, "Database is not connected"
-        await pool.release(conn)
+        if pool is None:
+            await conn.close()
+        else:
+            await pool.release(conn)
