@@ -51,22 +51,22 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache env
-      id: cache-env
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "::set-output name=dir::$(pip cache dir)"
+
+    - name: Cache pip
       uses: actions/cache@v2.1.6
       with:
-        path: env
-        key: env-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}
-
-    - name: Initialize virtual env
-      run: python -m venv env
-      if: steps.cache-env.outputs.cache-hit != 'true'
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}
 
     - name: Setup dependencies
-      run: env/bin/pip install .[tests]
+      run: pip install .[tests]
 
     - name: Test with pytest
-      run: env/bin/pytest tests
+      run: pytest tests
 
   notify:
     runs-on: ubuntu-latest
