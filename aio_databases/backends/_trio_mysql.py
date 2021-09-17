@@ -24,7 +24,7 @@ class Backend(ABCDatabaseBackend):
             *args, autocommit=autocommit, charset=charset, use_unicode=use_unicode, **options)
 
     async def connect(self) -> None:
-        pass
+        self.logger.warning("'trio-mysql' doesn't support pools")
 
     async def disconnect(self) -> None:
         pass

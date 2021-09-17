@@ -30,7 +30,7 @@ class Backend(ABCDatabaseBackend):
         return sql
 
     async def connect(self) -> None:
-        pass
+        self.logger.warning("'aiosqlite' doesn't support pools")
 
     async def disconnect(self) -> None:
         pass
