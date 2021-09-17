@@ -3,12 +3,12 @@ from pypika import Parameter
 
 
 @pytest.fixture(autouse=True)
-async def schema(db, User, manager):
+async def schema(pool, User, manager):
     UserManager = manager(User)
 
-    await db.execute(UserManager.create_table().if_not_exists())
+    await pool.execute(UserManager.create_table().if_not_exists())
     yield
-    await db.execute(UserManager.drop_table().if_exists())
+    await pool.execute(UserManager.drop_table().if_exists())
 
 
 async def test_base(db):

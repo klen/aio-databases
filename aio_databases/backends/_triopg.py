@@ -81,6 +81,15 @@ class Backend(ABCDatabaseBackend):
 
     pool: t.Optional[triopg._triopg.TrioPoolProxy] = None
 
+    def __init__(self, *args, **kwargs):
+        super(Backend, self).__init__(*args, **kwargs)
+        self.pool_options = {
+            name: self.options.pop(name)
+            for name in ('min_size', 'max_size', 'max_queries',
+                         'max_inactive_connection_lifetime', 'setup', 'init')
+            if name in self.options
+        }
+
     def __convert_sql__(self, sql: t.Any) -> str:
         sql = str(sql)
         if self.convert_params:
@@ -90,7 +99,7 @@ class Backend(ABCDatabaseBackend):
 
     async def connect(self) -> None:
         self.pool: triopg._triopg.TrioPoolProxy = triopg.create_pool(
-            **self.options,
+            **self.options, **self.pool_options,
             host=self.url.hostname,
             port=self.url.port,
             user=self.url.username,
@@ -107,15 +116,26 @@ class Backend(ABCDatabaseBackend):
 
     @trio_asyncio.aio_as_trio
     async def acquire(self) -> triopg._triopg.TrioConnectionProxy:
-        assert self.pool is not None, "Database is not connected"
-        pool = self.pool._asyncpg_pool
         conn = triopg._triopg.TrioConnectionProxy()
-        conn._asyncpg_conn = await pool.acquire()
+        if self.pool is None:
+            conn._asyncpg_conn = await asyncpg.connect(
+                **self.options,
+                host=self.url.hostname,
+                port=self.url.port,
+                user=self.url.username,
+                password=self.url.password,
+                database=self.url.path.strip('/'),
+            )
+        else:
+            pool = self.pool._asyncpg_pool
+            conn._asyncpg_conn = await pool.acquire()
         return conn
 
     @trio_asyncio.aio_as_trio
     async def release(self, conn: triopg._triopg.TrioConnectionProxy):
-        assert self.pool is not None, "Database is not connected"
         conn = conn._asyncpg_conn
-        pool = self.pool._asyncpg_pool
-        await pool.release(conn)
+        if self.pool is None:
+            await conn.close()
+        else:
+            pool = self.pool._asyncpg_pool
+            await pool.release(conn)

@@ -45,10 +45,12 @@ async def test_connection_context(db):
 
 
 @pytest.mark.parametrize('backend', ['aiomysql', 'aiopg', 'asyncpg'])
-async def test_pool(db, aiolib):
+async def test_pool(pool, aiolib):
     # TODO: Support trio
     if aiolib[0] == 'trio':
         return pytest.skip()
+
+    db = pool
 
     assert db.backend.pool
 

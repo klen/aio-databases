@@ -68,6 +68,8 @@ $ pip install aio-databases[aioodbc]    # asyncio
 
 ### Prepare the database to work
 
+Setup a pool of connections
+
 ```python
     # Initialize a database's pool
     async def my_app_starts():
@@ -82,6 +84,13 @@ $ pip install aio-databases[aioodbc]    # asyncio
 
     async with db:
         await my_main_coroutine()
+```
+
+or get a single connection
+
+```python
+    async with db.connection():
+        await my_code()
 ```
 
 ### Run SQL queries

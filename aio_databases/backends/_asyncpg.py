@@ -75,6 +75,15 @@ class Backend(ABCDatabaseBackend):
 
     pool: t.Optional[asyncpg.Pool] = None
 
+    def __init__(self, *args, **kwargs):
+        super(Backend, self).__init__(*args, **kwargs)
+        self.pool_options = {
+            name: self.options.pop(name)
+            for name in ('min_size', 'max_size', 'max_queries',
+                         'max_inactive_connection_lifetime', 'setup', 'init')
+            if name in self.options
+        }
+
     def __convert_sql__(self, sql: t.Any) -> str:
         sql = str(sql)
         if self.convert_params:
@@ -84,7 +93,7 @@ class Backend(ABCDatabaseBackend):
 
     async def connect(self) -> None:
         self.pool: asyncpg.Pool = await asyncpg.create_pool(
-            **self.options,
+            **self.options, **self.pool_options,
             host=self.url.hostname,
             port=self.url.port,
             user=self.url.username,
@@ -100,10 +109,20 @@ class Backend(ABCDatabaseBackend):
 
     async def acquire(self) -> asyncpg.Connection:
         pool = self.pool
-        assert pool is not None, "Database is not connected"
+        if pool is None:
+            return await asyncpg.connect(
+                **self.options,
+                host=self.url.hostname,
+                port=self.url.port,
+                user=self.url.username,
+                password=self.url.password,
+                database=self.url.path.strip('/'),
+            )
         return await pool.acquire()
 
     async def release(self, conn: asyncpg.Connection):
         pool = self.pool
-        assert pool is not None, "Database is not connected"
-        await pool.release(conn)
+        if pool is None:
+            await conn.close()
+        else:
+            await pool.release(conn)

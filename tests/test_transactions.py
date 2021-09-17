@@ -41,7 +41,8 @@ async def test_child_tasks(db, aiolib):
     assert res == [1, 1, 1, 1]
 
 
-async def test_nested(db, User, manager):
+async def test_nested(pool, User, manager):
+    db = pool
     UserManager = manager(User)
     await db.execute(UserManager.create_table().if_not_exists())
     await db.execute(UserManager.delete())

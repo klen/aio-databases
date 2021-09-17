@@ -38,17 +38,22 @@ def backend(request):
 
 
 @pytest.fixture
-async def db(backend, aiolib):
+def db(backend, aiolib):
     from aio_databases import Database
 
     if aiolib[0] == 'trio' and backend not in {'trio-mysql', 'triopg'}:
-        yield pytest.skip()
+        return pytest.skip()
 
     if aiolib[0] == 'asyncio' and backend not in {'aiomysql', 'aiopg', 'aiosqlite', 'asyncpg'}:
-        yield pytest.skip()
+        return pytest.skip()
 
     url, params = BACKEND_PARAMS[backend]
-    async with Database(url, **params) as db:
+    return Database(url, **params)
+
+
+@pytest.fixture
+async def pool(db):
+    async with db:
         async with db.connection():
             yield db
 
