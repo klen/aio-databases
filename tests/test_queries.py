@@ -2,7 +2,7 @@ import pytest
 from pypika import Parameter
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def schema(pool, User, manager):
     UserManager = manager(User)
 
@@ -71,6 +71,7 @@ async def test_execute(db, User, manager, schema):
     assert updated == 2
 
 
+@pytest.mark.parametrize('backend', ['aiomysql'])
 async def test_execute_many(db, User, manager, schema):
     UserManager = manager(User)
     await db.execute(UserManager.delete())

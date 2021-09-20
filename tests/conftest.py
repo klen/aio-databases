@@ -5,9 +5,9 @@ from pypika_orm import Manager, Model, fields
 
 
 BACKEND_PARAMS = {
-    'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2}),
+    'aiomysql': ('aiomysql://root@127.0.0.1:3306/tests', {'maxsize': 2, 'autocommit': True}),
     'aiopg': ('aiopg://test:test@localhost:5432/tests', {'maxsize': 2}),
-    'aiosqlite': ('aiosqlite:///:memory:', {'convert_params': True}),
+    'aiosqlite': ('aiosqlite:////tmp/aio-db-test.sqlite', {'convert_params': True}),
     'asyncpg': ('asyncpg://test:test@localhost:5432/tests', {
         'min_size': 2, 'max_size': 2, 'convert_params': True}),
     'trio-mysql': ('trio-mysql://root@127.0.0.1:3306/tests', {}),
@@ -54,8 +54,7 @@ def db(backend, aiolib):
 @pytest.fixture
 async def pool(db):
     async with db:
-        async with db.connection():
-            yield db
+        yield db
 
 
 @pytest.fixture(scope='session', autouse=True)

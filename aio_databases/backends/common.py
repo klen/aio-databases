@@ -14,10 +14,9 @@ class Transaction(ABCTransaction):
         connection = self.connection
         sql = 'BEGIN'
         if connection.transactions:
-            self.savepoint = savepoint = f"AIODB_SAVEPOINT_{uuid4().hex}"
+            self.savepoint = savepoint = f"AIODB__{uuid4().hex}"
             sql = f"SAVEPOINT {savepoint}"
-        connection.logger.debug((sql,))
-        return await connection._execute(sql)
+        return await connection.execute(sql)
 
     async def _commit(self) -> t.Any:
         savepoint = self.savepoint
@@ -25,8 +24,7 @@ class Transaction(ABCTransaction):
         sql = 'COMMIT'
         if savepoint:
             sql = f"RELEASE SAVEPOINT {savepoint}"
-        connection.logger.debug((sql,))
-        return await connection._execute(sql)
+        return await connection.execute(sql)
 
     async def _rollback(self) -> t.Any:
         savepoint = self.savepoint
@@ -34,8 +32,7 @@ class Transaction(ABCTransaction):
         sql = 'ROLLBACK'
         if savepoint:
             sql = f"ROLLBACK TO SAVEPOINT {savepoint}"
-        connection.logger.debug((sql,))
-        return await connection._execute(sql)
+        return await connection.execute(sql)
 
 
 class Connection(ABCConnection):

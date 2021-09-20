@@ -66,7 +66,7 @@ $ pip install aio-databases[aioodbc]    # asyncio
     db = Database('aiosqlite:///:memory:', **driver_params)
 ```
 
-### Prepare the database to work
+### Setup a pool of connections (optional)
 
 Setup a pool of connections
 
@@ -86,12 +86,19 @@ Setup a pool of connections
         await my_main_coroutine()
 ```
 
-or get a single connection
+### Get a connection
 
 ```python
+    # Acquire and release (on exit) a connection
     async with db.connection():
         await my_code()
+
+    # Acquire a connection only if it not exist
+    async with db.connection(False):
+        await my_code()
 ```
+
+If a pool is setup it will be used
 
 ### Run SQL queries
 
@@ -135,20 +142,15 @@ Manually open and close a connection
 
 ```python
 
-    # Create a new connection object
-    conn = db.connection()
+    # Acquire a new connection object
+    async with db.connection():
+        # Only one connection will be used
+        await db.fetchone('select %s', 42)
+        await db.fetchone('select %s', 77)
+        # ...
 
-    # or use the existing which one is binded for the current task
-    conn = db.connection(False)
-
-    # Acquire the connection
-    await conn.acquire()
-    # ...
-    # Release the connection
-    await conn.relese()
-
-    # an alternative (acquire/release as an async context)
-    async with conn:
+    # Acquire a new connection or use an existing
+    async with db.connection(False):
         # ...
 ```
 
@@ -164,6 +166,7 @@ If there any connection already `db.method` would be using the current one
 ### Manage transactions
 
 ```python
+    # Start a tranction using the current connection
     async with db.transaction() as trans1:
         # do some work ...
 
@@ -175,6 +178,10 @@ If there any connection already `db.method` would be using the current one
         # current context
 
         await trans1.commit()
+
+    # Create a new connection and start a transaction
+    async with db.tranction(True) as trans:
+        # do some work ...
 ```
 
 ## Bug tracker

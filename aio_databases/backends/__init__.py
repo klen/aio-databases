@@ -22,7 +22,7 @@ RE_PARAM = re(r'([^%])(%s)')
 
 class ABCTransaction(abc.ABC):
 
-    is_finished: bool = False
+    __slots__ = 'connection',
 
     def __init__(self, connection: ABCConnection):
         self.connection = connection
@@ -39,43 +39,38 @@ class ABCTransaction(abc.ABC):
     async def _rollback(self):
         raise NotImplementedError
 
+    def check_conn(self) -> ABCConnection:
+        connection = self.connection
+        if not connection.is_ready:
+            raise RuntimeError('There is no an acquired connection to start a transaction')
+        return connection
+
     async def __aenter__(self):
         await self.start()
         return self
 
     async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
-        if not self.is_finished:
+        connection = self.check_conn()
+        if self in connection.transactions:
             if exc_type is not None:
                 await self.rollback()
             else:
                 await self.commit()
 
     async def start(self):
-        connection = self.connection
-        if not connection.is_ready:
-            raise RuntimeError('There is no an acquired connection to start a transaction')
-
-        async with connection._lock:
-            await self._start()
-            connection.transactions.append(self)
+        connection = self.check_conn()
+        await self._start()
+        connection.transactions.add(self)
 
     async def commit(self):
-        connection = self.connection
-        if not connection.is_ready:
-            raise RuntimeError('There is no an acquired connection to commit the transaction')
-        async with connection._lock:
-            await self._commit()
-            connection.transactions.remove(self)
-            self.is_finished = True
+        connection = self.check_conn()
+        connection.transactions.remove(self)
+        await self._commit()
 
     async def rollback(self):
-        connection = self.connection
-        if not connection.is_ready:
-            raise RuntimeError('There is no an acquired connection to rollback the transaction')
-        async with connection._lock:
-            await self._rollback()
-            connection.transactions.remove(self)
-            self.is_finished = True
+        connection = self.check_conn()
+        connection.transactions.remove(self)
+        await self._rollback()
 
 
 class ABCConnection(abc.ABC):
@@ -83,12 +78,12 @@ class ABCConnection(abc.ABC):
     transaction_cls: t.ClassVar[t.Type[ABCTransaction]]
     lock_cls: t.Type[asyncio.Lock] = asyncio.Lock
 
-    __slots__ = 'database', 'logger', 'transactions', '_conn', '_lock'
+    __slots__ = 'backend', 'logger', 'transactions', '_conn', '_lock'
 
-    def __init__(self, database: ABCDatabaseBackend):
-        self.database = database
-        self.logger: logging.Logger = database.logger
-        self.transactions: t.List[ABCTransaction] = []
+    def __init__(self, backend: ABCDatabaseBackend):
+        self.backend = backend
+        self.logger: logging.Logger = backend.logger
+        self.transactions: t.Set[ABCTransaction] = set()
         self._conn: t.Any = None
         self._lock: asyncio.Lock = self.lock_cls()
 
@@ -99,58 +94,54 @@ class ABCConnection(abc.ABC):
     async def acquire(self) -> ABCConnection:
         if self._conn is None:
             async with self._lock:
-                self._conn = await self.database.acquire()
-
-        return self
-
-    __aenter__ = acquire
+                self._conn = await self.backend.acquire()
+                self.logger.debug('Acquire a connection: %s', id(self))
 
     async def release(self, *args):
-        async with self._lock:
-            conn, self._conn = self._conn, None
-            if conn:
-                await self.database.release(conn)
-
-    __aexit__ = release
+        if self._conn is not None:
+            async with self._lock:
+                conn, self._conn = self._conn, None
+                await self.backend.release(conn)
+                self.logger.debug('Release a connection: %s', id(self))
 
     async def execute(self, query: t.Any, *params, **options) -> t.Any:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._execute(sql, *params, **options)
 
     async def executemany(self, query: t.Any, *params, **options) -> t.Any:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._executemany(sql, *params, **options)
 
     async def fetchall(self, query: t.Any, *params, **options) -> t.List[t.Mapping]:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._fetchall(sql, *params, **options)
 
     async def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.List[t.Mapping]:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._fetchmany(size, sql, *params, **options)
 
     async def fetchone(self, query: t.Any, *params, **options) -> t.Optional[t.Mapping]:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._fetchone(sql, *params, **options)
 
     async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._fetchval(sql, *params, column=column, **options)
 
     async def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
-        sql = self.database.__convert_sql__(query)
+        sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             async for res in self._iterate(sql, *params, **options):

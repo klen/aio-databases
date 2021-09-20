@@ -19,12 +19,15 @@ class Transaction(ABCTransaction):
         return self._trans
 
     async def _start(self):
+        self.connection.logger.debug(('BEGIN',))
         return await self.trans.start()
 
     async def _commit(self):
+        self.connection.logger.debug(('COMMIT',))
         return await self.trans.commit()
 
     async def _rollback(self):
+        self.connection.logger.debug(('ROLLBACK',))
         return await self.trans.rollback()
 
 

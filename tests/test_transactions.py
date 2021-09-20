@@ -4,14 +4,6 @@ import pytest
 
 
 async def test_base(db):
-    # Close current connection
-    async with db.connection(False):
-        pass
-
-    with pytest.raises(RuntimeError):
-        async with db.transaction():
-            assert await db.fetchval('select 1')
-
     res = None
     async with db.connection():
         async with db.transaction():
@@ -95,3 +87,45 @@ async def test_nested(pool, User, manager):
     assert not res
 
     await db.execute(UserManager.drop_table().if_exists())
+
+
+async def test_connections(db):
+    async with db.transaction() as trans1:
+        assert trans1
+
+        async with db.transaction() as trans2:
+            assert trans2
+            assert trans1.connection is trans2.connection
+
+            async with db.transaction(True) as trans3:
+                assert trans3
+                assert trans3.connection is not trans2.connection
+
+
+@pytest.mark.skip('not sure the lib has to implement it')
+@pytest.mark.parametrize('aiolib', ['asyncio'])
+async def test_concurency(db, manager, User):
+    import asyncio
+
+    UserManager = manager(User)
+    async with db.connection():
+
+        await db.execute(UserManager.create_table().if_not_exists())
+        await db.execute(UserManager.insert(name='Tom', fullname='Tom Smith'))
+
+        async def task1():
+            async with db.transaction():
+                await asyncio.sleep(1e-2)
+                qs = UserManager.update().set(User.name, 'Jack').where(User.name == 'Tom')
+                await db.execute(qs)
+
+        async def task2():
+                qs = UserManager.update().set(User.name, 'Mike').where(User.name == 'Tom')
+                await db.execute(qs)
+
+        await asyncio.gather(task1(), task2())
+
+        user = await db.fetchone(UserManager.select())
+        assert user['name'] == 'Jack'
+
+        await db.execute(UserManager.drop_table().if_exists())
