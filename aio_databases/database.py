@@ -61,14 +61,13 @@ class Database:
     def current_conn(self) -> t.Optional[ABCConnection]:
         return current_conn.get()
 
-    def connection(self, create: bool = True) -> ABCConnection:
+    def connection(self, create: bool = True) -> ConnectionContext:
         """Get/create a connection from/to the current context."""
         return ConnectionContext(self.backend, use_existing=not create)
 
-    def transaction(self, create: bool = False) -> ABCTransaction:
+    def transaction(self, create: bool = False) -> TransactionContext:
         """Create a transaction."""
         return TransactionContext(self.backend, use_existing=not create)
-        #  return self.connection(create).transaction()
 
     async def execute(self, query: t.Any, *params, **options) -> t.Any:
         """Execute a query."""
@@ -146,6 +145,6 @@ class TransactionContext(ConnectionContext):
         await self.trans.__aenter__()
         return self.trans
 
-    async def __aexit__(self, exc_type: t.Type[BaseException], *args):
-        await self.trans.__aexit__()
-        await super(TransactionContext, self).__aexit__(exc_type, *args)
+    async def __aexit__(self, *args):
+        await self.trans.__aexit__(*args)
+        await super(TransactionContext, self).__aexit__(*args)

@@ -91,18 +91,16 @@ class ABCConnection(abc.ABC):
     def is_ready(self) -> bool:
         return self._conn is not None
 
-    async def acquire(self) -> ABCConnection:
+    async def acquire(self):
         if self._conn is None:
             async with self._lock:
                 self._conn = await self.backend.acquire()
-                self.logger.debug('Acquire a connection: %s', id(self))
 
     async def release(self, *args):
         if self._conn is not None:
             async with self._lock:
                 conn, self._conn = self._conn, None
                 await self.backend.release(conn)
-                self.logger.debug('Release a connection: %s', id(self))
 
     async def execute(self, query: t.Any, *params, **options) -> t.Any:
         sql = self.backend.__convert_sql__(query)

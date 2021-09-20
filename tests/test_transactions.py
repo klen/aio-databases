@@ -33,6 +33,23 @@ async def test_child_tasks(db, aiolib):
     assert res == [1, 1, 1, 1]
 
 
+@pytest.mark.parametrize('backend', ['aiopg', 'aiosqlite', 'asyncpg'])
+async def test_auto_rollback(db, User, manager):
+    UserManager = manager(User)
+
+    await db.execute(UserManager.create_table().if_not_exists())
+
+    with pytest.raises(Exception):
+        async with db.transaction() as trans:
+            await db.execute(UserManager.insert(name='Jim', fullname='Jim Jones'))
+            res = await db.fetchall(UserManager.select())
+            assert len(res) == 1
+            raise Exception
+
+    res = await db.fetchall(UserManager.select())
+    assert len(res) == 0
+
+
 async def test_nested(pool, User, manager):
     db = pool
     UserManager = manager(User)
