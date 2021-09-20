@@ -6,7 +6,7 @@ import contextvars
 import logging
 
 
-__version__ = '0.10.0'
+__version__ = '0.10.1'
 
 
 logger: logging.Logger = logging.getLogger('aio-databases')
