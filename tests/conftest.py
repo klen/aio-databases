@@ -25,6 +25,7 @@ BACKEND_PARAMS = {
 
 @pytest.fixture(scope='session', params=[
     pytest.param(('asyncio', {'use_uvloop': False}), id='asyncio'),
+    #  pytest.param(('trio', {'trio_asyncio': True}), id='trio'),
     'trio'
 ])
 def aiolib(request):

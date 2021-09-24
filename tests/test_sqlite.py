@@ -22,15 +22,20 @@ def manager():
 async def test_database(tmp_path):
     from aio_databases import Database
 
+    pragmas = (
+        ('journal_mode', 'WAL'),
+        ('synchronous', 'NORMAL'),
+    )
+
     db = Database('sqlite:///example.db')
     assert db
     assert db.backend.url
 
-    async with Database("sqlite:///:memory:") as db:
+    async with Database("sqlite:///:memory:", pragmas=pragmas) as db:
         async with db.connection():
             assert await db.fetchval('select 1')
 
-    async with Database(f"sqlite:///{tmp_path / 'db.sqlite'}") as db:
+    async with Database(f"sqlite:///{tmp_path / 'db.sqlite'}", pragmas=pragmas) as db:
         async with db.connection():
             assert await db.fetchval('select 1')
 

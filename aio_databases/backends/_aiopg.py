@@ -43,7 +43,7 @@ class Backend(ABCDatabaseBackend):
         pool.close()
         await pool.wait_closed()
 
-    async def acquire(self) -> Connection:
+    async def _acquire(self) -> Connection:
         pool = self.pool
         if pool is None:
             return await connect(self.dsn, **self.options)

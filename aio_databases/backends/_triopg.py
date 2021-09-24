@@ -115,7 +115,7 @@ class Backend(ABCDatabaseBackend):
         await pool.close()
 
     @trio_asyncio.aio_as_trio
-    async def acquire(self) -> triopg._triopg.TrioConnectionProxy:
+    async def _acquire(self) -> triopg._triopg.TrioConnectionProxy:
         conn = triopg._triopg.TrioConnectionProxy()
         if self.pool is None:
             conn._asyncpg_conn = await asyncpg.connect(

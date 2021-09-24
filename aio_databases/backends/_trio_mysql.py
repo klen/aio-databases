@@ -29,7 +29,7 @@ class Backend(ABCDatabaseBackend):
     async def disconnect(self) -> None:
         pass
 
-    async def acquire(self) -> trio_mysql.Connection:
+    async def _acquire(self) -> trio_mysql.Connection:
         conn = trio_mysql.connect(
             **self.options,
             host=self.url.hostname,

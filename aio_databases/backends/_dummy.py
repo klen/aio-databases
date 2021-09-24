@@ -43,7 +43,7 @@ class Backend(ABCDatabaseBackend):
     async def disconnect(self):
         pass
 
-    async def acquire(self):
+    async def _acquire(self):
         pass
 
     async def release(self, conn):

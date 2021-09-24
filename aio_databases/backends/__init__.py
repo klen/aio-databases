@@ -185,11 +185,13 @@ class ABCDatabaseBackend(abc.ABC):
 
     connection_cls: t.ClassVar[t.Type[ABCConnection]]
 
-    __slots__ = 'url', 'logger', 'convert_params', 'options'
+    __slots__ = 'url', 'logger', 'convert_params', 'options', 'init'
 
-    def __init__(self, url: SplitResult, logger: logging.Logger = logger,
-                 convert_params: bool = False, **options):
+    def __init__(self, url: SplitResult,
+                 logger: logging.Logger = logger, convert_params: bool = False,
+                 init: t.Callable[[t.Any], t.Awaitable[t.Any]] = None, **options):
         self.url = url
+        self.init = init
         self.logger = logger
         self.convert_params = convert_params
         self.options = dict(parse_qsl(url.query), **options)
@@ -208,6 +210,13 @@ class ABCDatabaseBackend(abc.ABC):
     def __convert_sql__(self, sql: t.Any) -> str:
         return str(sql)
 
+    async def acquire(self) -> t.Any:
+        conn = await self._acquire()
+        init = self.init
+        if init is not None:
+            return await init(conn)
+        return conn
+
     @abc.abstractmethod
     async def connect(self) -> None:
         raise NotImplementedError
@@ -217,7 +226,7 @@ class ABCDatabaseBackend(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def acquire(self) -> t.Any:
+    async def _acquire(self) -> t.Any:
         raise NotImplementedError
 
     @abc.abstractmethod
