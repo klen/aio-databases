@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
 
     services:
       mysql:
@@ -44,10 +44,10 @@ jobs:
 
     steps:
     - name: Checkout changes
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@main
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2.2.2
+      uses: actions/setup-python@main
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -57,7 +57,7 @@ jobs:
         echo "::set-output name=dir::$(pip cache dir)"
 
     - name: Cache pip
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@main
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}

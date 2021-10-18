@@ -1,4 +1,5 @@
 import pytest
+import sys
 import logging
 
 from pypika_orm import Manager, Model, fields
@@ -41,6 +42,10 @@ def backend(request):
 @pytest.fixture
 def db(backend, aiolib):
     from aio_databases import Database
+
+    # 2021-10-18 aiomysql doesnt support python 3.10
+    if backend == 'aiomysql' and sys.version_info >= (3, 10):
+        return pytest.skip()
 
     if aiolib[0] == 'trio' and backend not in {'trio-mysql', 'triopg'}:
         return pytest.skip()
