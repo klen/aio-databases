@@ -22,10 +22,14 @@ RE_PARAM = re(r'([^%])(%s)')
 
 class ABCTransaction(abc.ABC):
 
-    __slots__ = 'connection',
+    __slots__ = 'connection', 'silent'
 
-    def __init__(self, connection: ABCConnection):
+    def __init__(self, connection: ABCConnection, *, silent: bool = False):
+        """Initialize the transaction.
+        :param silent: Do not raise an error for commit/rollback
+        """
         self.connection = connection
+        self.silent = silent
 
     @abc.abstractmethod
     async def _start(self):
@@ -39,38 +43,50 @@ class ABCTransaction(abc.ABC):
     async def _rollback(self):
         raise NotImplementedError
 
-    def check_conn(self) -> ABCConnection:
-        connection = self.connection
-        if not connection.is_ready:
-            raise RuntimeError('There is no an acquired connection to start a transaction')
-        return connection
-
     async def __aenter__(self):
         await self.start()
         return self
 
     async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
-        connection = self.check_conn()
-        if self in connection.transactions:
+        if self in self.connection.transactions:
             if exc_type is not None:
                 await self.rollback()
             else:
                 await self.commit()
 
     async def start(self):
-        connection = self.check_conn()
+        connection: ABCConnection = self.connection
+        if not connection.is_ready:
+            raise RuntimeError('There is no an acquired connection to start transactions')
+
         await self._start()
         connection.transactions.add(self)
 
-    async def commit(self):
-        connection = self.check_conn()
+    async def commit(self, silent: bool = None):
+        """Commit the transaction.
+        :param silent: Do not raise an error when the connection is closed
+        """
+        connection: ABCConnection = self.connection
         connection.transactions.remove(self)
-        await self._commit()
+        if connection.is_ready:
+            return await self._commit()
 
-    async def rollback(self):
-        connection = self.check_conn()
+        silent = self.silent if silent is None else silent
+        if not silent:
+            raise RuntimeError('There is no an acquired connection to commit the transaction')
+
+    async def rollback(self, silent: bool = None):
+        """ Rollback the transaction.
+        :param silent: Do not raise an error when the connection is closed
+        """
+        connection: ABCConnection = self.connection
         connection.transactions.remove(self)
-        await self._rollback()
+        if connection.is_ready:
+            return await self._rollback()
+
+        silent = self.silent if silent is None else silent
+        if not silent:
+            raise RuntimeError('There is no an acquired connection to rollback the transaction')
 
 
 class ABCConnection(abc.ABC):
@@ -80,7 +96,7 @@ class ABCConnection(abc.ABC):
 
     __slots__ = 'backend', 'logger', 'transactions', '_conn', '_lock'
 
-    def __init__(self, backend: ABCDatabaseBackend):
+    def __init__(self, backend: ABCDatabaseBackend, **params):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
         self.transactions: t.Set[ABCTransaction] = set()
@@ -174,8 +190,8 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
         yield
 
-    def transaction(self) -> ABCTransaction:
-        return self.transaction_cls(self)
+    def transaction(self, **params) -> ABCTransaction:
+        return self.transaction_cls(self, **params)
 
 
 class ABCDatabaseBackend(abc.ABC):
@@ -233,8 +249,8 @@ class ABCDatabaseBackend(abc.ABC):
     async def release(self, conn: t.Any) -> None:
         raise NotImplementedError
 
-    def connection(self) -> ABCConnection:
-        return self.connection_cls(self)
+    def connection(self, **params) -> ABCConnection:
+        return self.connection_cls(self, **params)
 
 
 #  Import available backends

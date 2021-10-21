@@ -16,6 +16,10 @@ async def test_base(db):
             async with db.transaction():
                 await conn.release()
 
+    async with db.connection(False) as conn:
+        async with db.transaction(silent=True):
+            await conn.release()
+
 
 async def test_child_tasks(db, aiolib):
     if aiolib[0] == 'trio':

@@ -1,3 +1,7 @@
+2021-10-21  klen
+
+	* `db.transaction()` now accepts `silent=True`
+
 2021-10-18  klen
 
 	* Support python 3.10

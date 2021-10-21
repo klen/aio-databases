@@ -61,13 +61,13 @@ class Database:
     def current_conn(self) -> t.Optional[ABCConnection]:
         return current_conn.get()
 
-    def connection(self, create: bool = True) -> ConnectionContext:
+    def connection(self, create: bool = True, **params) -> ConnectionContext:
         """Get/create a connection from/to the current context."""
-        return ConnectionContext(self.backend, use_existing=not create)
+        return ConnectionContext(self.backend, use_existing=not create, **params)
 
-    def transaction(self, create: bool = False) -> TransactionContext:
+    def transaction(self, create: bool = False, **params) -> TransactionContext:
         """Create a transaction."""
-        return TransactionContext(self.backend, use_existing=not create)
+        return TransactionContext(self.backend, use_existing=not create, **params)
 
     async def execute(self, query: t.Any, *params, **options) -> t.Any:
         """Execute a query."""
@@ -110,10 +110,10 @@ class ConnectionContext:
 
     __slots__ = 'release', 'conn', 'token'
 
-    def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False):
+    def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False, **params):
         conn = current_conn.get()
         if conn is None or not use_existing:
-            conn = backend.connection()
+            conn = backend.connection(**params)
             self.release = True
         else:
             self.release = False
@@ -136,9 +136,9 @@ class TransactionContext(ConnectionContext):
 
     __slots__ = ConnectionContext.__slots__ + ('trans',)
 
-    def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = True):
+    def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = True, **params):
         super(TransactionContext, self).__init__(backend, use_existing=use_existing)
-        self.trans = self.conn.transaction()
+        self.trans = self.conn.transaction(**params)
 
     async def __aenter__(self):
         await super(TransactionContext, self).__aenter__()
