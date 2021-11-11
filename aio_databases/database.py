@@ -5,10 +5,13 @@ import typing as t
 import logging
 
 from urllib.parse import urlsplit
+from contextvars import ContextVar
 
-from . import logger, current_conn
-from .backends import BACKENDS, SHORTCUTS, ABCDatabaseBackend, ABCConnection, ABCTransaction
+from . import logger
+from .backends import BACKENDS, SHORTCUTS, ABCDatabaseBackend, ABCConnection
 
+
+current_conn: ContextVar[t.Optional[ABCConnection]] = ContextVar('aio-db-ses', default=None)
 
 class Database:
 
@@ -43,7 +46,7 @@ class Database:
 
     __aenter__ = connect
 
-    async def disconnect(self, *args) -> None:
+    async def disconnect(self, *_) -> None:
         """Close connections and the database's pool."""
         self.logger.info(f'Database disconnect: {self.url}')
 
@@ -72,7 +75,7 @@ class Database:
     async def execute(self, query: t.Any, *params, **options) -> t.Any:
         """Execute a query."""
         async with self.connection(False) as conn:
-            return await conn.execute(query, *params)
+            return await conn.execute(query, *params, **options)
 
     async def executemany(self, query: t.Any, *params, **options) -> t.Any:
         """Execute a query many times."""
@@ -92,7 +95,7 @@ class Database:
     async def fetchone(self, query: t.Any, *params, **options) -> t.Optional[t.Mapping]:
         """Fetch a row."""
         async with self.connection(False) as conn:
-            return await conn.fetchone(query, *params)
+            return await conn.fetchone(query, *params, **options)
 
     async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
         """Fetch a value."""
@@ -108,15 +111,15 @@ class Database:
 
 class ConnectionContext:
 
-    __slots__ = 'release', 'conn', 'token'
+    __slots__ = 'release_conn', 'conn', 'token'
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False, **params):
         conn = current_conn.get()
         if conn is None or not use_existing:
             conn = backend.connection(**params)
-            self.release = True
+            self.release_conn = True
         else:
-            self.release = False
+            self.release_conn = False
 
         self.conn = conn
 
@@ -126,15 +129,22 @@ class ConnectionContext:
         self.token = current_conn.set(conn)
         return conn
 
-    async def __aexit__(self, *args):
-        if self.release:
+    async def __aexit__(self, *_):
+        if self.release_conn:
             current_conn.reset(self.token)
             await self.conn.release()
+
+    async def acquire(self) -> ABCConnection:
+        await self.conn.acquire()
+        return self.conn
+
+    async def release(self, *args):
+        await self.conn.release(*args)
 
 
 class TransactionContext(ConnectionContext):
 
-    __slots__ = ConnectionContext.__slots__ + ('trans',)
+    __slots__ = 'release_conn', 'conn', 'token', 'trans'
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = True, **params):
         super(TransactionContext, self).__init__(backend, use_existing=use_existing)

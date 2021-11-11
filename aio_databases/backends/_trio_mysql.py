@@ -9,7 +9,7 @@ from .common import Connection as Connection_
 
 class Connection(Connection_):
 
-    lock_cls = trio.Lock
+    lock_cls = trio.Lock  # type: ignore
 
 
 class Backend(ABCDatabaseBackend):

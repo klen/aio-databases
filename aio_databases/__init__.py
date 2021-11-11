@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextvars
 import logging
 
 
@@ -12,7 +11,8 @@ __version__ = '0.13.0'
 logger: logging.Logger = logging.getLogger('aio-databases')
 logger.addHandler(logging.NullHandler())
 
-current_conn = contextvars.ContextVar('aio-db-ses', default=None)
 
+from .database import Database, current_conn
 
-from .database import Database  # noqa
+assert Database
+assert current_conn

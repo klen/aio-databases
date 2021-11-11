@@ -35,7 +35,6 @@ class Record(Mapping):
 
     def __str__(self) -> str:
         return ' '.join(f"{name}={value!r}" for name, value in self.items())
-        return f"{dict(self)}"
 
     def __repr__(self) -> str:
         return f"<Record {self}>"

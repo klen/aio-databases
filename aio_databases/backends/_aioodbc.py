@@ -10,10 +10,10 @@ from .common import Connection
 
 class DBType:
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, **_):
         if obj is None:
             return 'odbc'
-        breakpoint()
+      
         return obj.options['dsn']
 
 

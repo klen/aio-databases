@@ -8,7 +8,7 @@ import logging
 from re import compile as re
 from urllib.parse import SplitResult, parse_qsl
 
-from .. import logger
+from .. import logger as base_logger
 
 
 BACKENDS = []
@@ -47,7 +47,7 @@ class ABCTransaction(abc.ABC):
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type: t.Type[BaseException] = None, *args):
+    async def __aexit__(self, exc_type: t.Type[BaseException] = None, *_):
         if self in self.connection.transactions:
             if exc_type is not None:
                 await self.rollback()
@@ -96,7 +96,7 @@ class ABCConnection(abc.ABC):
 
     __slots__ = 'backend', 'logger', 'transactions', '_conn', '_lock'
 
-    def __init__(self, backend: ABCDatabaseBackend, **params):
+    def __init__(self, backend: ABCDatabaseBackend, **_):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
         self.transactions: t.Set[ABCTransaction] = set()
@@ -112,7 +112,7 @@ class ABCConnection(abc.ABC):
             async with self._lock:
                 self._conn = await self.backend.acquire()
 
-    async def release(self, *args):
+    async def release(self, *_):
         if self._conn is not None:
             async with self._lock:
                 conn, self._conn = self._conn, None
@@ -186,9 +186,8 @@ class ABCConnection(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator:
+    def _iterate(self, query: str, *params, **options) -> t.AsyncIterator:
         raise NotImplementedError
-        yield
 
     def transaction(self, **params) -> ABCTransaction:
         return self.transaction_cls(self, **params)
@@ -204,7 +203,7 @@ class ABCDatabaseBackend(abc.ABC):
     __slots__ = 'url', 'logger', 'convert_params', 'options', 'init'
 
     def __init__(self, url: SplitResult,
-                 logger: logging.Logger = logger, convert_params: bool = False,
+                 logger: logging.Logger = base_logger, convert_params: bool = False,
                  init: t.Callable[[t.Any], t.Awaitable[t.Any]] = None, **options):
         self.url = url
         self.init = init
@@ -258,37 +257,53 @@ class ABCDatabaseBackend(abc.ABC):
 
 from ._dummy import Backend as DummyBackend  # A dummy backend for testing  # noqa
 
+assert DummyBackend
+
 try:
     from ._aiosqlite import Backend as AIOSQLiteBackend  # noqa
+
+    assert AIOSQLiteBackend
 except ImportError:
     pass
 
 try:
     from ._aiopg import Backend as AIOPGBackend  # noqa
+
+    assert AIOPGBackend
 except ImportError:
     pass
 
 try:
     from ._asyncpg import Backend as AsyncPGBackend  # noqa
+
+    assert AsyncPGBackend
 except ImportError:
     pass
 
 try:
     from ._aiomysql import Backend as AIOMySQLBackend  # noqa
+
+    assert AIOMySQLBackend
 except ImportError:
     pass
 
 try:
     from ._aioodbc import Backend as AIOODBCBackend  # noqa
+
+    assert AIOODBCBackend
 except ImportError:
     pass
 
 try:
     from ._trio_mysql import Backend as TrioMySQLBackend  # noqa
+
+    assert TrioMySQLBackend
 except ImportError:
     pass
 
 try:
     from ._triopg import Backend as TrioPGBackend  # noqa
+
+    assert TrioPGBackend
 except ImportError:
     pass

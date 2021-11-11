@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import typing as t
 
 import asyncpg
+from asyncpg.transaction import Transaction as AsyncPGTransaction
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 from .common import PGReplacer, pg_parse_status
@@ -10,10 +9,10 @@ from .common import PGReplacer, pg_parse_status
 
 class Transaction(ABCTransaction):
 
-    _trans: t.Optional[asyncpg.transactions.Transaction] = None
+    _trans: t.Optional[AsyncPGTransaction] = None
 
     @property
-    def trans(self) -> asyncpg.transactions.Transaction:
+    def trans(self) -> AsyncPGTransaction:
         if self._trans is None:
             self._trans = self.connection._conn.transaction()
         return self._trans
@@ -48,8 +47,7 @@ class Connection(ABCConnection):
         conn: asyncpg.Connection = self._conn
         return await conn.fetch(query, *params, **options)
 
-    async def _fetchmany(self, size: int, query: str,
-                         *params, **options) -> t.List[asyncpg.Record]:
+    async def _fetchmany(self, size: int, query: str, *params, **_) -> t.List[asyncpg.Record]:
         conn: asyncpg.Connection = self._conn
         async with conn.transaction():
             cur = await conn.cursor(query, *params)
@@ -63,7 +61,7 @@ class Connection(ABCConnection):
         conn: asyncpg.Connection = self._conn
         return await conn.fetchval(query, *params, column=column, **options)
 
-    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
+    async def _iterate(self, query: str, *params, **_) -> t.AsyncIterator[asyncpg.Record]:
         conn: asyncpg.Connection = self._conn
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):
@@ -95,7 +93,7 @@ class Backend(ABCDatabaseBackend):
         return sql
 
     async def connect(self) -> None:
-        self.pool: asyncpg.Pool = await asyncpg.create_pool(
+        self.pool = await asyncpg.create_pool(
             **self.options, **self.pool_options,
             host=self.url.hostname,
             port=self.url.port,

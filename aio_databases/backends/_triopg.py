@@ -6,6 +6,7 @@ import asyncpg
 import trio
 import trio_asyncio
 import triopg
+from asyncpg.transaction import Transaction as AsyncPGTransaction
 
 from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
 from .common import PGReplacer, pg_parse_status
@@ -13,10 +14,10 @@ from .common import PGReplacer, pg_parse_status
 
 class Transaction(ABCTransaction):
 
-    _trans: t.Optional[asyncpg.transactions.Transaction] = None
+    _trans: t.Optional[AsyncPGTransaction] = None
 
     @property
-    def trans(self) -> asyncpg.transactions.Transaction:
+    def trans(self) -> AsyncPGTransaction:
         if self._trans is None:
             self._trans = self.connection._conn._asyncpg_conn.transaction()
         return self._trans
@@ -37,7 +38,7 @@ class Transaction(ABCTransaction):
 class Connection(ABCConnection):
 
     transaction_cls = Transaction
-    lock_cls = trio.Lock
+    lock_cls = trio.Lock  # type: ignore
 
     @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> t.Any:
@@ -66,7 +67,7 @@ class Connection(ABCConnection):
     async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
         return await self._conn.fetchval(query, *params, column=column, **options)
 
-    async def _iterate(self, query: str, *params, **options) -> t.AsyncIterator[asyncpg.Record]:
+    async def _iterate(self, query: str, *params, **_) -> t.AsyncIterator[asyncpg.Record]:
         conn = self._conn
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):
@@ -98,7 +99,7 @@ class Backend(ABCDatabaseBackend):
         return sql
 
     async def connect(self) -> None:
-        self.pool: triopg._triopg.TrioPoolProxy = triopg.create_pool(
+        self.pool = triopg.create_pool(
             **self.options, **self.pool_options,
             host=self.url.hostname,
             port=self.url.port,
@@ -129,6 +130,7 @@ class Backend(ABCDatabaseBackend):
         else:
             pool = self.pool._asyncpg_pool
             conn._asyncpg_conn = await pool.acquire()
+
         return conn
 
     @trio_asyncio.aio_as_trio
