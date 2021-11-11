@@ -14,5 +14,4 @@ logger.addHandler(logging.NullHandler())
 
 from .database import Database, current_conn
 
-assert Database
-assert current_conn
+__all__ = 'Database', 'current_conn'
