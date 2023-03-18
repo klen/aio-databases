@@ -16,7 +16,8 @@ async def test_base(user_cls: Model):
 
     async with trio_asyncio.open_loop():
         async with Database("triopg://test:test@localhost:5432/tests", convert_params=True) as db:
-            manager = Manager(db, dialect="postgresql")
+            db.backend.name = "postgresql"  # type: ignore[misc]  # fix for pika orm
+            manager = Manager(db)
             user_manager = manager(user_cls)
 
             await db.execute("select %s", "1")
