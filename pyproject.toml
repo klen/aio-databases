@@ -73,11 +73,16 @@ check_untyped_defs = true
 legacy_tox_ini = """
 [tox]
 envlist = py38,py39,py310,py311
+isolated_buiid = true
 
 [testenv]
-deps = -e .[tests]
+allowlist_externals = poetry
+skip_install = true
+commands_pre =
+    poetry install
+deps = -e .[dev]
 commands =
-	pytest tests
+    poetry run pytest tests --import-mode importlib
 """
 
 [tool.ruff]
