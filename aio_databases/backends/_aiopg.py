@@ -1,35 +1,35 @@
 from __future__ import annotations
 
-import typing as t
+from typing import Any, Optional
 
-from aiopg import Pool, Connection, create_pool, connect
+from aiopg import Connection, Pool, connect, create_pool
 
 from . import ABCDatabaseBackend
 from .common import Connection as Ses
 
 
-class Session(Ses):
-
-    async def _executemany(self, query: str, *params, **options) -> t.Any:
-        async with self._conn.cursor() as cursor:
+class Session(Ses[Connection]):
+    async def _executemany(self, query: str, *params, **options) -> Any:
+        conn = self._conn
+        assert conn is not None, "Database is not connected"
+        async with conn.cursor() as cursor:
             for args_ in params:
                 await cursor.execute(query, args_, **options)
 
 
-class Backend(ABCDatabaseBackend):
-
-    name = 'aiopg'
-    db_type = 'postgresql'
+class Backend(ABCDatabaseBackend[Connection]):
+    name = "aiopg"
+    db_type = "postgresql"
     connection_cls = Session
 
-    pool: t.Optional[Pool] = None
+    pool: Optional[Pool] = None
 
     def __init__(self, *args, **kwargs):
         super(Backend, self).__init__(*args, **kwargs)
-        self.dsn = self.url._replace(scheme='postgresql').geturl()
+        self.dsn = self.url._replace(scheme="postgresql").geturl()
         self.pool_options = {
             name: self.options.pop(name)
-            for name in ('minsize', 'maxsize', 'pool_recycle', 'on_connect')
+            for name in ("minsize", "maxsize", "pool_recycle", "on_connect")
             if name in self.options
         }
 

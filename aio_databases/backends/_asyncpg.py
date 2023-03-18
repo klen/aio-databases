@@ -1,91 +1,109 @@
-import typing as t
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import asyncpg
-from asyncpg.transaction import Transaction as AsyncPGTransaction
 
-from . import ABCDatabaseBackend, ABCConnection, ABCTransaction, RE_PARAM
+from . import RE_PARAM, ABCConnection, ABCDatabaseBackend, ABCTransaction
 from .common import PGReplacer, pg_parse_status
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
-class Transaction(ABCTransaction):
+    from asyncpg.transaction import Transaction as AsyncPGTransaction
 
-    _trans: t.Optional[AsyncPGTransaction] = None
+
+class Transaction(ABCTransaction[asyncpg.Connection]):
+    _trans: Optional[AsyncPGTransaction] = None
 
     @property
     def trans(self) -> AsyncPGTransaction:
         if self._trans is None:
-            self._trans = self.connection._conn.transaction()
+            conn = self.connection._conn
+            assert conn is not None
+            self._trans = conn.transaction()
         return self._trans
 
     async def _start(self):
-        self.connection.logger.debug(('BEGIN',))
+        self.connection.logger.debug(("BEGIN",))
         return await self.trans.start()
 
     async def _commit(self):
-        self.connection.logger.debug(('COMMIT',))
+        self.connection.logger.debug(("COMMIT",))
         return await self.trans.commit()
 
     async def _rollback(self):
-        self.connection.logger.debug(('ROLLBACK',))
+        self.connection.logger.debug(("ROLLBACK",))
         return await self.trans.rollback()
 
 
-class Connection(ABCConnection):
-
+class Connection(ABCConnection[asyncpg.Connection]):
     transaction_cls = Transaction
 
-    async def _execute(self, query: str, *params, **options) -> t.Any:
-        conn: asyncpg.Connection = self._conn
+    async def _execute(self, query: str, *params, **options) -> Any:
+        conn = self._conn
+        assert conn is not None
         status = await conn.execute(query, *params, **options)
         return pg_parse_status(status)
 
-    async def _executemany(self, query: str, *params, **options) -> t.Any:
-        conn: asyncpg.Connection = self._conn
+    async def _executemany(self, query: str, *params, **options) -> Any:
+        conn = self._conn
+        assert conn is not None
         return await conn.executemany(query, params, **options)
 
-    async def _fetchall(self, query: str, *params, **options) -> t.List[asyncpg.Record]:
-        conn: asyncpg.Connection = self._conn
+    async def _fetchall(self, query: str, *params, **options) -> List[asyncpg.Record]:
+        conn = self._conn
+        assert conn is not None
         return await conn.fetch(query, *params, **options)
 
-    async def _fetchmany(self, size: int, query: str, *params, **_) -> t.List[asyncpg.Record]:
-        conn: asyncpg.Connection = self._conn
+    async def _fetchmany(self, size: int, query: str, *params, **_) -> List[asyncpg.Record]:
+        conn = self._conn
+        assert conn is not None
         async with conn.transaction():
             cur = await conn.cursor(query, *params)
             return await cur.fetch(size)
 
-    async def _fetchone(self, query: str, *params, **options) -> t.Optional[asyncpg.Record]:
-        conn: asyncpg.Connection = self._conn
+    async def _fetchone(self, query: str, *params, **options) -> Optional[asyncpg.Record]:
+        conn = self._conn
+        assert conn is not None
         return await conn.fetchrow(query, *params, **options)
 
-    async def _fetchval(self, query: str, *params, column: t.Any = 0, **options) -> t.Any:
-        conn: asyncpg.Connection = self._conn
+    async def _fetchval(self, query: str, *params, column: Any = 0, **options) -> Any:
+        conn = self._conn
+        assert conn is not None
         return await conn.fetchval(query, *params, column=column, **options)
 
-    async def _iterate(self, query: str, *params, **_) -> t.AsyncIterator[asyncpg.Record]:
-        conn: asyncpg.Connection = self._conn
+    async def _iterate(self, query: str, *params, **_) -> AsyncIterator[asyncpg.Record]:
+        conn = self._conn
+        assert conn is not None
         async with conn.transaction():
             async for rec in conn.cursor(query, *params):
                 yield rec
 
 
-class Backend(ABCDatabaseBackend):
-
-    name = 'asyncpg'
-    db_type = 'postgresql'
+class Backend(ABCDatabaseBackend[asyncpg.Connection]):
+    name = "asyncpg"
+    db_type = "postgresql"
     connection_cls = Connection
 
-    pool: t.Optional[asyncpg.Pool] = None
+    pool: Optional[asyncpg.Pool] = None
 
     def __init__(self, *args, **kwargs):
         super(Backend, self).__init__(*args, **kwargs)
         self.pool_options = {
             name: self.options.pop(name)
-            for name in ('min_size', 'max_size', 'max_queries',
-                         'max_inactive_connection_lifetime', 'setup', 'init')
+            for name in (
+                "min_size",
+                "max_size",
+                "max_queries",
+                "max_inactive_connection_lifetime",
+                "setup",
+                "init",
+            )
             if name in self.options
         }
 
-    def __convert_sql__(self, sql: t.Any) -> str:
+    def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)
         if self.convert_params:
             sql = RE_PARAM.sub(PGReplacer(), sql)
@@ -94,12 +112,13 @@ class Backend(ABCDatabaseBackend):
 
     async def connect(self) -> None:
         self.pool = await asyncpg.create_pool(
-            **self.options, **self.pool_options,
+            **self.options,
+            **self.pool_options,
             host=self.url.hostname,
             port=self.url.port,
             user=self.url.username,
             password=self.url.password,
-            database=self.url.path.strip('/'),
+            database=self.url.path.strip("/"),
         )
 
     async def disconnect(self) -> None:
@@ -117,7 +136,7 @@ class Backend(ABCDatabaseBackend):
                 port=self.url.port,
                 user=self.url.username,
                 password=self.url.password,
-                database=self.url.path.strip('/'),
+                database=self.url.path.strip("/"),
             )
         return await pool.acquire()
 

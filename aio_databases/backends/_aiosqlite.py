@@ -1,39 +1,49 @@
 from __future__ import annotations
 
-import typing as t
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import aiosqlite
 
-from . import ABCDatabaseBackend, RE_PARAM
+from . import RE_PARAM, ABCDatabaseBackend
 from .common import Connection
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-class Backend(ABCDatabaseBackend):
 
-    name = 'aiosqlite'
-    db_type = 'sqlite'
+class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
+    name = "aiosqlite"
+    db_type = "sqlite"
     connection_cls = Connection
 
-    def __init__(self, url, isolation_level: str = None, init: t.Callable = None,
-                 pragmas: t.Tuple['str', 'str'] = None, **kwargs):
+    def __init__(
+        self,
+        url,
+        isolation_level: Optional[str] = None,
+        init: Optional[Callable] = None,
+        pragmas: Optional[Tuple[Tuple[str, str]]] = None,
+        **kwargs,
+    ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
-        if ':memory:' in url.path:
-            url = url._replace(path='')
+        if ":memory:" in url.path:
+            url = url._replace(path="")
         elif url.path:
             url = url._replace(path=url.path[1:])
 
-        if init is None and pragmas:
+        if init is None and pragmas is not None:
+            _pragmas = pragmas
+
             async def init(conn):
-                for pragma, value in pragmas:
+                for pragma, value in _pragmas:
                     await conn.execute(f"PRAGMA {pragma} = {value};")
                 return conn
 
         super(Backend, self).__init__(url, isolation_level=isolation_level, init=init, **kwargs)
 
-    def __convert_sql__(self, sql: t.Any) -> str:
+    def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)
         if self.convert_params:
-            sql = RE_PARAM.sub(r'\1?', sql)
+            sql = RE_PARAM.sub(r"\1?", sql)
         return sql
 
     async def connect(self) -> None:

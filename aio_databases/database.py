@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-import typing as t
-
-import logging
-
-from urllib.parse import urlsplit
 from contextvars import ContextVar
+from typing import TYPE_CHECKING, Any, List, Optional
+from urllib.parse import urlsplit
 
-from . import logger
-from .backends import BACKENDS, SHORTCUTS, ABCDatabaseBackend, ABCConnection
+from .backends import BACKENDS, SHORTCUTS, ABCConnection, ABCDatabaseBackend, ABCTransaction
+from .log import logger
 
+if TYPE_CHECKING:
+    import logging
+    from collections.abc import AsyncIterator
 
-current_conn: ContextVar[t.Optional[ABCConnection]] = ContextVar('aio-db-ses', default=None)
+    from .types import TRecord
+
+current_conn: ContextVar[Optional[ABCConnection]] = ContextVar("current_conn", default=None)
+
 
 class Database:
-
     url: str
     backend: ABCDatabaseBackend
     is_connected: bool = False
@@ -28,8 +30,7 @@ class Database:
             if backend_cls.name == scheme or backend_cls.db_type == scheme:
                 break
         else:
-            raise ValueError(
-                f"Unsupported backend: '{scheme}', please install a required database driver")
+            raise ValueError(f"Unknown backend: '{scheme}' or driver is not installed")
 
         self.url = url
         self.logger = logger
@@ -38,7 +39,7 @@ class Database:
     async def connect(self) -> Database:
         """Open the database's pool."""
         if not self.is_connected:
-            self.logger.info(f'Database connect: {self.url}')
+            self.logger.info("Database connect: %s", self.url)
             await self.backend.connect()
             self.is_connected = True
 
@@ -46,13 +47,13 @@ class Database:
 
     __aenter__ = connect
 
-    async def disconnect(self, *_) -> None:
+    async def disconnect(self, *exit_args) -> None:
         """Close connections and the database's pool."""
-        self.logger.info(f'Database disconnect: {self.url}')
+        self.logger.info("Database disconnect: %s", self.url)
 
         # Release connections
-        #  while self.current_conn:
-        #      await self.current_conn.release()
+        while self.current_conn:
+            await self.current_conn.release()
 
         if self.is_connected:
             await self.backend.disconnect()
@@ -61,57 +62,59 @@ class Database:
     __aexit__ = disconnect
 
     @property
-    def current_conn(self) -> t.Optional[ABCConnection]:
+    def current_conn(self) -> Optional[ABCConnection]:
         return current_conn.get()
 
-    def connection(self, create: bool = True, **params) -> ConnectionContext:
+    def connection(self, *, create: bool = True, **params) -> ConnectionContext:
         """Get/create a connection from/to the current context."""
         return ConnectionContext(self.backend, use_existing=not create, **params)
 
-    def transaction(self, create: bool = False, **params) -> TransactionContext:
+    def transaction(self, *, create: bool = False, **params) -> TransactionContext:
         """Create a transaction."""
         return TransactionContext(self.backend, use_existing=not create, **params)
 
-    async def execute(self, query: t.Any, *params, **options) -> t.Any:
+    async def execute(self, query: Any, *params, **options) -> Any:
         """Execute a query."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.execute(query, *params, **options)
 
-    async def executemany(self, query: t.Any, *params, **options) -> t.Any:
+    async def executemany(self, query: Any, *params, **options) -> Any:
         """Execute a query many times."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.executemany(query, *params, **options)
 
-    async def fetchall(self, query: t.Any, *params, **options) -> t.List[t.Mapping]:
+    async def fetchall(self, query: Any, *params, **options) -> List[TRecord]:
         """Fetch all rows."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.fetchall(query, *params, **options)
 
-    async def fetchmany(self, size: int, query: t.Any, *params, **options) -> t.List[t.Mapping]:
+    async def fetchmany(self, size: int, query: Any, *params, **options) -> List[TRecord]:
         """Fetch rows."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.fetchmany(size, query, *params, **options)
 
-    async def fetchone(self, query: t.Any, *params, **options) -> t.Optional[t.Mapping]:
+    async def fetchone(self, query: Any, *params, **options) -> Optional[TRecord]:
         """Fetch a row."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.fetchone(query, *params, **options)
 
-    async def fetchval(self, query: t.Any, *params, column: t.Any = 0, **options) -> t.Any:
+    async def fetchval(self, query: Any, *params, column: Any = 0, **options) -> Any:
         """Fetch a value."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             return await conn.fetchval(query, *params, column=column, **options)
 
-    async def iterate(self, query: t.Any, *params, **options) -> t.AsyncIterator:
+    async def iterate(self, query: Any, *params, **options) -> AsyncIterator[TRecord]:
         """Iterate through results."""
-        async with self.connection(False) as conn:
+        async with self.connection(create=False) as conn:
             async for res in conn.iterate(query, *params, **options):
                 yield res
 
 
 class ConnectionContext:
+    __slots__ = "release_conn", "conn", "token"
 
-    __slots__ = 'release_conn', 'conn', 'token'
+    if TYPE_CHECKING:
+        conn: ABCConnection
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False, **params):
         conn = current_conn.get()
@@ -143,8 +146,10 @@ class ConnectionContext:
 
 
 class TransactionContext(ConnectionContext):
+    __slots__ = "release_conn", "conn", "token", "trans"
 
-    __slots__ = 'release_conn', 'conn', 'token', 'trans'
+    if TYPE_CHECKING:
+        trans: ABCTransaction
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = True, **params):
         super(TransactionContext, self).__init__(backend, use_existing=use_existing)

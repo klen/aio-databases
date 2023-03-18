@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
 
     services:
       mysql:
@@ -43,30 +44,27 @@ jobs:
           - "5432:5432"
 
     steps:
-    - name: Checkout changes
-      uses: actions/checkout@main
+    - uses: actions/checkout@main
+    - name: install poetry
+      run: pipx install poetry
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@main
       with:
+        cache: poetry
         python-version: ${{ matrix.python-version }}
 
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
+    - name: Setup requirements
+      run: poetry install --with dev
 
-    - name: Cache pip
-      uses: actions/cache@main
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg') }}
+    - name: Check code
+      run: poetry run ruff aio_databases
 
-    - name: Setup dependencies
-      run: pip install .[tests]
+    - name: Check typing
+      run: poetry run mypy
 
     - name: Test with pytest
-      run: pytest tests
+      run: poetry run pytest tests
 
   notify:
     runs-on: ubuntu-latest

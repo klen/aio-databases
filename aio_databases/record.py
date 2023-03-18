@@ -1,22 +1,34 @@
 from __future__ import annotations
 
-import typing as t
-
-from collections.abc import Mapping
+from collections.abc import ItemsView, Iterator, KeysView, Mapping, Sequence, ValuesView
+from typing import Any, Dict, Tuple, Union, cast
 
 
 class Record(Mapping):
+    __slots__ = "_values", "_keys"
 
-    __slots__ = '_values', '_keys'
-
-    def __init__(self, values: t.Tuple, description: t.Sequence[t.Sequence]):
+    def __init__(self, values: Tuple, description: Sequence[Sequence]):
         self._values = values
         self._keys = tuple(d[0] for d in description)
+
+    @classmethod
+    def from_dict(cls, val: Dict) -> Record:
+        keys, values = zip(*val.items())
+        return cls(values, [[name] for name in keys])
+
+    def keys(self):
+        return cast(KeysView, self._keys)
+
+    def values(self):
+        return cast(ValuesView, self._values)
+
+    def items(self):
+        return cast(ItemsView, zip(self._keys, self._values))
 
     def __len__(self) -> int:
         return len(self._values)
 
-    def __getitem__(self, idx: t.Union[str, int]) -> t.Any:
+    def __getitem__(self, idx: Union[str, int]) -> Any:
         if isinstance(idx, int):
             return self._values[idx]
 
@@ -29,29 +41,15 @@ class Record(Mapping):
     def __contains__(self, idx) -> bool:
         return idx in self._keys
 
-    def __iter__(self) -> t.Iterator:
+    def __iter__(self) -> Iterator:
         for val in self._values:
             yield val
 
     def __str__(self) -> str:
-        return ' '.join(f"{name}={value!r}" for name, value in self.items())
+        return " ".join(f"{name}={value!r}" for name, value in self.items())
 
     def __repr__(self) -> str:
         return f"<Record {self}>"
 
-    @classmethod
-    def from_dict(cls, val: t.Dict) -> Record:
-        keys, values = zip(*val.items())
-        return cls(values, [[name] for name in keys])
-
-    def values(self) -> t.Tuple:  # type: ignore
-        return self._values
-
-    def keys(self) -> t.Tuple:  # type: ignore
-        return self._keys
-
-    def items(self) -> zip:  # type: ignore
-        return zip(self._keys, self._values)
-
-    def __eq__(self, obj: t.Any):
+    def __eq__(self, obj: Any):
         return self._values == tuple(obj)

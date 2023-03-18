@@ -1,0 +1,103 @@
+[tool.poetry]
+name = "aio-databases"
+version = "0.13.2"
+homepage = "https://github.com/klen/aio-databases"
+repository = "https://github.com/klen/aio-databases"
+description = "Async support for various databases"
+readme = "README.md"
+license = "MIT"
+keywords = ["asyncio", "trio", "databases", "mysql", "sqlite", "postgres", "postgresql"]
+authors = ["Kirill Klenov <horneds@gmail.com>"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Framework :: AsyncIO",
+  "Framework :: Trio",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+asyncpg = {version = "*", optional = true}
+aiopg = {version = "*", optional = true}
+aiomysql = {version = "*", optional = true}
+aiosqlite = {version = "*", optional = true}
+aioodbc = {version = "*", optional = true}
+triopg = {version = "*", optional = true}
+trio_mysql = {version = "*", optional = true}
+
+[tool.poetry.extras]
+asyncpg = ["asyncpg"]
+aiopg = ["aiopg"]
+aiomysql = ["aiomysql"]
+aiosqlite = ["aiosqlite"]
+aioodbc = ["aioodbc"]
+triopg = ["triopg"]
+trio_mysql = ["trio_mysql"]
+
+[tool.poetry.group.dev.dependencies]
+aiomysql = "*"
+aioodbc = "*"
+aiopg = "*"
+aiosqlite = "*"
+asyncpg = "*"
+cryptography = "*"
+psycopg2-binary = "*"
+pypika-orm = "^0.0.11"
+pytest = "*"
+pytest-aio = {version="^1", extras=["trio"]}
+pytest-mypy = "*"
+trio_asyncio = "*"
+trio_mysql = "*"
+triopg = "*"
+black = "*"
+ruff = "*"
+pre-commit = "*"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --mypy -xsvl"
+
+[tool.mypy]
+packages = ["aio_databases", "tests"]
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38,py39,py310,py311
+
+[testenv]
+deps = -e .[tests]
+commands =
+	pytest tests
+"""
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+exclude = [".venv", "docs", "examples"]
+select = ["ALL"]
+ignore = [
+  "ARG", "D", "UP", "ANN", "DJ", "EM", "RSE", "SLF", "RET", "S101",
+  "PLR2004", "PLR0912", "N804", "A003", "TRY003", "COM812", "PT012"
+]
+
+[tool.ruff.per-file-ignores]
+"test*.py" = ["FBT001"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+preview = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

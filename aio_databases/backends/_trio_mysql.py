@@ -7,21 +7,20 @@ from . import ABCDatabaseBackend
 from .common import Connection as Connection_
 
 
-class Connection(Connection_):
+class Connection(Connection_[trio_mysql.Connection]):
+    lock_cls = trio.Lock
 
-    lock_cls = trio.Lock  # type: ignore
 
-
-class Backend(ABCDatabaseBackend):
-
-    name = 'trio-mysql'
-    db_type = 'mysql'
+class Backend(ABCDatabaseBackend[trio_mysql.Connection]):
+    name = "trio-mysql"
+    db_type = "mysql"
     connection_cls = Connection
 
-    def __init__(self, *args, autocommit=True, charset='utf8', use_unicode=True, **options):
+    def __init__(self, *args, autocommit=True, charset="utf8", use_unicode=True, **options):
         """Setup default value for autocommit."""
         super(Backend, self).__init__(
-            *args, autocommit=autocommit, charset=charset, use_unicode=use_unicode, **options)
+            *args, autocommit=autocommit, charset=charset, use_unicode=use_unicode, **options
+        )
 
     async def connect(self) -> None:
         self.logger.warning("'trio-mysql' doesn't support pools")
@@ -36,7 +35,7 @@ class Backend(ABCDatabaseBackend):
             port=self.url.port,
             user=self.url.username,
             password=self.url.password,
-            db=self.url.path.strip('/'),
+            db=self.url.path.strip("/"),
         )
         await conn.connect()
         return conn
