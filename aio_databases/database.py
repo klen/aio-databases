@@ -51,9 +51,11 @@ class Database:
         """Close connections and the database's pool."""
         self.logger.info("Database disconnect: %s", self.url)
 
-        # Release connections
-        while self.current_conn:
-            await self.current_conn.release()
+        # Release connection
+        cur_conn = self.current_conn
+        if cur_conn and cur_conn.is_ready:
+            await cur_conn.release()
+            current_conn.set(None)
 
         if self.is_connected:
             await self.backend.disconnect()
@@ -111,29 +113,28 @@ class Database:
 
 
 class ConnectionContext:
-    __slots__ = "release_conn", "conn", "token"
+    __slots__ = "create_conn", "conn", "token"
 
     if TYPE_CHECKING:
         conn: ABCConnection
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False, **params):
         conn = current_conn.get()
-        if conn is None or not use_existing:
+        self.create_conn = not (conn and conn.is_ready and use_existing)
+        if self.create_conn:
             conn = backend.connection(**params)
-            self.release_conn = True
-        else:
-            self.release_conn = False
 
-        self.conn = conn
+        self.conn = conn  # type: ignore[assignment]
 
     async def __aenter__(self):
         conn = self.conn
-        await conn.acquire()
-        self.token = current_conn.set(conn)
+        if self.create_conn:
+            await conn.acquire()
+            self.token = current_conn.set(conn)
         return conn
 
     async def __aexit__(self, *_):
-        if self.release_conn:
+        if self.create_conn:
             current_conn.reset(self.token)
             await self.conn.release()
 
