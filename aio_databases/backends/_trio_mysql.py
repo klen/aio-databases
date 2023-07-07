@@ -32,9 +32,9 @@ class Backend(ABCDatabaseBackend[trio_mysql.Connection]):
         conn = trio_mysql.connect(
             **self.options,
             host=self.url.hostname,
-            port=self.url.port,
+            port=self.url.port or 3306,
             user=self.url.username,
-            password=self.url.password,
+            password=self.url.password or "",
             db=self.url.path.strip("/"),
         )
         await conn.connect()

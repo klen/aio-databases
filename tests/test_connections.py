@@ -19,11 +19,11 @@ async def test_db_context(db, backend):
 
     database = Database("dummy://")
     database.backend = db.backend
-    async with database:
-        async with database.connection() as conn:
-            await conn.execute("select 1")
-            assert database.current_conn is conn
-            assert database.current_conn.is_ready
+    async with database, database.connection() as conn:
+        await conn.execute("select 1")
+        assert database.current_conn is not None
+        assert database.current_conn is conn
+        assert database.current_conn.is_ready
 
     assert database.current_conn is None
 

@@ -4,7 +4,7 @@ import abc
 import asyncio
 from contextlib import suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, List, Optional, Set, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generic, List, Optional, Set, Type
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -220,7 +220,7 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
         self.init = init
         self.logger = logger
         self.convert_params = convert_params
-        self.options = dict(parse_qsl(url.query), **options)
+        self.options: Dict[str, Any] = dict(parse_qsl(url.query), **options)
 
     def __init_subclass__(cls, *args, **kwargs):
         """Register a new backend class."""

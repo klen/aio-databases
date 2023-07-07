@@ -13,9 +13,8 @@ if TYPE_CHECKING:
 
 async def test_base(db: Database):
     res = None
-    async with db.connection():
-        async with db.transaction():
-            res = await db.fetchval("select 1")
+    async with db.connection(), db.transaction():
+        res = await db.fetchval("select 1")
 
     assert res == 1
 
@@ -24,9 +23,8 @@ async def test_base(db: Database):
             async with db.transaction():
                 await conn.release()
 
-    async with db.connection(create=False) as conn:
-        async with db.transaction(silent=True):
-            await conn.release()
+    async with db.connection(create=False) as conn, db.transaction(silent=True):
+        await conn.release()
 
 
 async def test_child_tasks(db: Database, aiolib: str):
@@ -37,9 +35,8 @@ async def test_child_tasks(db: Database, aiolib: str):
     assert res == 1
 
     async def process():
-        async with db.connection():
-            async with db.transaction():
-                return await db.fetchval("select 1")
+        async with db.connection(), db.transaction():
+            return await db.fetchval("select 1")
 
     res = await asyncio.gather(process(), process(), process(), process())
     assert res == [1, 1, 1, 1]

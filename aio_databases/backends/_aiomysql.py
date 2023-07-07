@@ -43,14 +43,17 @@ class Backend(ABCDatabaseBackend[Connection]):
 
     async def _acquire(self) -> Connection:
         pool = self.pool
+        url = self.url
+        assert url.hostname
+        assert url.port
         if pool is None:
             return await connect(
                 **self.options,
-                host=self.url.hostname,
-                port=self.url.port,
-                user=self.url.username,
-                password=self.url.password,
-                db=self.url.path.strip("/"),
+                host=url.hostname,
+                port=url.port,
+                user=url.username,
+                password=url.password or "",
+                db=url.path.strip("/"),
             )
 
         return await pool.acquire()

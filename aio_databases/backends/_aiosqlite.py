@@ -16,13 +16,14 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
     db_type = "sqlite"
     connection_cls = Connection
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         url,
         isolation_level: Optional[str] = None,
         init: Optional[Callable] = None,
-        pragmas: Optional[Tuple[Tuple[str, str]]] = None,
-        **kwargs,
+        pragmas: Optional[Tuple[Tuple[str, str], ...]] = None,
+        functions: Optional[Tuple[Tuple[str, int, Callable], ...]] = None,
+        **options,
     ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
         if ":memory:" in url.path:
@@ -30,15 +31,19 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
         elif url.path:
             url = url._replace(path=url.path[1:])
 
-        if init is None and pragmas is not None:
-            _pragmas = pragmas
+        if init is None and (pragmas or functions):
 
-            async def init(conn):
-                for pragma, value in _pragmas:
+            async def init_conn(conn):
+                for pragma, value in pragmas or []:
                     await conn.execute(f"PRAGMA {pragma} = {value};")
+
+                for name, num_params, func in functions or []:
+                    await conn.create_function(name, num_params, func)
                 return conn
 
-        super(Backend, self).__init__(url, isolation_level=isolation_level, init=init, **kwargs)
+            init = init_conn
+
+        super(Backend, self).__init__(url, isolation_level=isolation_level, init=init, **options)
 
     def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)
