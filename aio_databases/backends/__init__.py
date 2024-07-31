@@ -4,7 +4,7 @@ import abc
 import asyncio
 from contextlib import suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generic, List, Optional, Set, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -96,15 +96,15 @@ class ABCTransaction(abc.ABC, Generic[TVConnection]):
 
 
 class ABCConnection(abc.ABC, Generic[TVConnection]):
-    transaction_cls: ClassVar[Type[ABCTransaction]]
-    lock_cls: Type[asyncio.Lock] = asyncio.Lock
+    transaction_cls: ClassVar[type[ABCTransaction]]
+    lock_cls: type[asyncio.Lock] = asyncio.Lock
 
     __slots__ = "backend", "logger", "transactions", "_conn", "_lock"
 
     def __init__(self, backend: ABCDatabaseBackend, **unsupported_params):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
-        self.transactions: Set[ABCTransaction] = set()
+        self.transactions: set[ABCTransaction] = set()
         self._conn: Optional[TVConnection] = None
         self._lock = self.lock_cls()
 
@@ -135,13 +135,13 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         async with self._lock:
             return await self._executemany(sql, *params, **options)
 
-    async def fetchall(self, query: Any, *params, **options) -> List[TRecord]:
+    async def fetchall(self, query: Any, *params, **options) -> list[TRecord]:
         sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._fetchall(sql, *params, **options)
 
-    async def fetchmany(self, size: int, query: Any, *params, **options) -> List[TRecord]:
+    async def fetchmany(self, size: int, query: Any, *params, **options) -> list[TRecord]:
         sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
@@ -175,11 +175,11 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _fetchall(self, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchall(self, query: str, *params, **options) -> list[TRecord]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> list[TRecord]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -203,7 +203,7 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
     db_type: str
     pool: Any
 
-    connection_cls: ClassVar[Type[ABCConnection]]
+    connection_cls: ClassVar[type[ABCConnection]]
 
     __slots__ = "url", "logger", "convert_params", "options", "init"
 
@@ -220,7 +220,7 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
         self.init = init
         self.logger = logger
         self.convert_params = convert_params
-        self.options: Dict[str, Any] = dict(parse_qsl(url.query), **options)
+        self.options: dict[str, Any] = dict(parse_qsl(url.query), **options)
 
     def __init_subclass__(cls, *args, **kwargs):
         """Register a new backend class."""

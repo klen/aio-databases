@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from . import ABCConnection, ABCDatabaseBackend
 from .common import Transaction
@@ -20,10 +20,10 @@ class Connection(ABCConnection):
     async def _executemany(self, query: str, *params, **options) -> Any:
         return None
 
-    async def _fetchall(self, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchall(self, query: str, *params, **options) -> list[TRecord]:
         return []
 
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> list[TRecord]:
         return []
 
     async def _fetchone(self, query: str, *params, **options) -> Optional[TRecord]:

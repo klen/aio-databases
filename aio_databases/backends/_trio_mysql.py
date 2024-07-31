@@ -8,7 +8,7 @@ from .common import Connection as Connection_
 
 
 class Connection(Connection_[trio_mysql.Connection]):
-    lock_cls = trio.Lock
+    lock_cls = trio.Lock  # type: ignore[assignment]
 
 
 class Backend(ABCDatabaseBackend[trio_mysql.Connection]):

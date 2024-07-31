@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 from aio_databases.record import Record
@@ -45,7 +45,7 @@ class Transaction(ABCTransaction):
 class Connection(ABCConnection[TVConnection]):
     transaction_cls = Transaction
 
-    async def _execute(self, query: str, *params, **options) -> Tuple[int, Any]:
+    async def _execute(self, query: str, *params, **options) -> tuple[int, Any]:
         assert self._conn is not None
         async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
@@ -56,7 +56,7 @@ class Connection(ABCConnection[TVConnection]):
         async with self._conn.cursor() as cursor:
             await cursor.executemany(query, params, **options)
 
-    async def _fetchall(self, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchall(self, query: str, *params, **options) -> list[TRecord]:
         assert self._conn is not None
         async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
@@ -64,7 +64,7 @@ class Connection(ABCConnection[TVConnection]):
             desc = cursor.description
             return [Record(row, desc) for row in rows]
 
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> List[TRecord]:
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> list[TRecord]:
         assert self._conn is not None
         async with self._conn.cursor() as cursor:
             await cursor.execute(query, params, **options)
@@ -113,7 +113,7 @@ class PGReplacer:
         return f"{match.group(1)}${self.num}"
 
 
-def pg_parse_status(status: str) -> Union[str, Tuple[int, Any]]:
+def pg_parse_status(status: str) -> Union[str, tuple[int, Any]]:
     operation, params = status.split(" ", 1)
     if operation in {"INSERT"}:
         oid, rows = params.split()
