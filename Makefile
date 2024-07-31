@@ -1,8 +1,10 @@
 VIRTUAL_ENV ?= .venv
 
-$(VIRTUAL_ENV): pyproject.toml
+$(VIRTUAL_ENV): poetry.lock .pre-commit-config.yaml
+	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
 	@poetry install --with dev
-	@poetry run pre-commit install --hook-type pre-push
+	@poetry run pre-commit install
+	@poetry self add poetry-bumpversion
 	@touch $(VIRTUAL_ENV)
 
 .PHONY: test
@@ -21,15 +23,17 @@ VERSION	?= minor
 
 .PHONY: version
 version: $(VIRTUAL_ENV)
-	@$(eval VFROM := $(shell poetry version -s))
+	git checkout develop
+	git pull
+	git checkout master
+	git merge develop
+	git pull
 	@poetry version $(VERSION)
-	@git commit -am "Bump version $(VFROM) → `poetry version -s`"
-	@git tag `poetry version -s`
-	@git checkout master
-	@git merge develop
-	@git checkout develop
-	@git push origin develop master
-	@git push --tags
+	git commit -am "build(release): `poetry version -s`"
+	git tag `poetry version -s`
+	git checkout develop
+	git merge master
+	git push --tags origin develop master
 
 .PHONY: minor
 minor:

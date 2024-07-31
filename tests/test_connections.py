@@ -14,7 +14,7 @@ async def test_default_connection(db: Database):
     assert int(await db.fetchval("select 42")) == 42
 
 
-async def test_db_context(db, backend):
+async def test_db_context(db):
     from aio_databases import Database
 
     database = Database("dummy://")

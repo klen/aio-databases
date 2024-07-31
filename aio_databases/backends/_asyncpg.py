@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import asyncpg
 
@@ -51,12 +51,12 @@ class Connection(ABCConnection[asyncpg.Connection]):
         assert conn is not None
         return await conn.executemany(query, params, **options)
 
-    async def _fetchall(self, query: str, *params, **options) -> List[asyncpg.Record]:
+    async def _fetchall(self, query: str, *params, **options) -> list[asyncpg.Record]:
         conn = self._conn
         assert conn is not None
         return await conn.fetch(query, *params, **options)
 
-    async def _fetchmany(self, size: int, query: str, *params, **_) -> List[asyncpg.Record]:
+    async def _fetchmany(self, size: int, query: str, *params, **_) -> list[asyncpg.Record]:
         conn = self._conn
         assert conn is not None
         async with conn.transaction():

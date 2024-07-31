@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlsplit
 
 from .backends import BACKENDS, SHORTCUTS, ABCConnection, ABCDatabaseBackend, ABCTransaction
@@ -27,7 +27,7 @@ class Database:
         scheme = parsed_url.scheme
         scheme = SHORTCUTS.get(scheme, scheme)
         for backend_cls in BACKENDS:
-            if backend_cls.name == scheme or backend_cls.db_type == scheme:
+            if scheme in (backend_cls.name, backend_cls.db_type):
                 break
         else:
             raise ValueError(f"Unknown backend: '{scheme}' or driver is not installed")
@@ -85,12 +85,12 @@ class Database:
         async with self.connection(create=False) as conn:
             return await conn.executemany(query, *params, **options)
 
-    async def fetchall(self, query: Any, *params, **options) -> List[TRecord]:
+    async def fetchall(self, query: Any, *params, **options) -> list[TRecord]:
         """Fetch all rows."""
         async with self.connection(create=False) as conn:
             return await conn.fetchall(query, *params, **options)
 
-    async def fetchmany(self, size: int, query: Any, *params, **options) -> List[TRecord]:
+    async def fetchmany(self, size: int, query: Any, *params, **options) -> list[TRecord]:
         """Fetch rows."""
         async with self.connection(create=False) as conn:
             return await conn.fetchmany(size, query, *params, **options)

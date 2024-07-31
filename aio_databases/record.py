@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import ItemsView, Iterator, KeysView, Mapping, Sequence, ValuesView
-from typing import Any, Dict, Tuple, Union, cast
+from typing import Any, Union, cast
 
 
 class Record(Mapping):
     __slots__ = "_values", "_keys"
 
-    def __init__(self, values: Tuple, description: Sequence[Sequence]):
+    def __init__(self, values: tuple, description: Sequence[Sequence]):
         self._values = values
         self._keys = tuple(d[0] for d in description)
 
     @classmethod
-    def from_dict(cls, val: Dict) -> Record:
+    def from_dict(cls, val: dict) -> Record:
         keys, values = zip(*val.items())
         return cls(values, [[name] for name in keys])
 
@@ -51,5 +51,5 @@ class Record(Mapping):
     def __repr__(self) -> str:
         return f"<Record {self}>"
 
-    def __eq__(self, obj: Any):
+    def __eq__(self, obj):
         return self._values == tuple(obj)

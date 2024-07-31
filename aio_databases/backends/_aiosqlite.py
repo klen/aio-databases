@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 import aiosqlite
 
@@ -16,13 +16,13 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
     db_type = "sqlite"
     connection_cls = Connection
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         url,
         isolation_level: Optional[str] = None,
         init: Optional[Callable] = None,
-        pragmas: Optional[Tuple[Tuple[str, str], ...]] = None,
-        functions: Optional[Tuple[Tuple[str, int, Callable], ...]] = None,
+        pragmas: Optional[tuple[tuple[str, str], ...]] = None,
+        functions: Optional[tuple[tuple[str, int, Callable], ...]] = None,
         **options,
     ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""

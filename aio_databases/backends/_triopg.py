@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import asyncpg
 import trio
@@ -42,7 +42,7 @@ class Transaction(ABCTransaction[triopg._triopg.TrioConnectionProxy]):
 
 class Connection(ABCConnection[triopg._triopg.TrioConnectionProxy]):
     transaction_cls = Transaction
-    lock_cls = trio.Lock
+    lock_cls = trio.Lock  # type: ignore[assignment]
 
     @trio_asyncio.aio_as_trio
     async def _execute(self, query: str, *params, **options) -> Any:
@@ -58,13 +58,13 @@ class Connection(ABCConnection[triopg._triopg.TrioConnectionProxy]):
         return await conn.executemany(query, params, **options)
 
     @trio_asyncio.aio_as_trio
-    async def _fetchall(self, query: str, *params, **options) -> List[asyncpg.Record]:
+    async def _fetchall(self, query: str, *params, **options) -> list[asyncpg.Record]:
         conn = self._conn
         assert conn is not None, "Connection is not established"
         return await conn.fetch(query, *params, **options)
 
     @trio_asyncio.aio_as_trio
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> List[asyncpg.Record]:
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> list[asyncpg.Record]:
         conn = self._conn
         assert conn is not None, "Connection is not established"
         res = await conn.fetch(query, *params, **options)
