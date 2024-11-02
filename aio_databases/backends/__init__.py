@@ -201,11 +201,9 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
 class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
     name: ClassVar[str]
     db_type: str
-    pool: Any
+    _pool: Any
 
     connection_cls: ClassVar[type[ABCConnection]]
-
-    __slots__ = "url", "logger", "convert_params", "options", "init"
 
     def __init__(
         self,
@@ -236,6 +234,16 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
     def __convert_sql__(self, sql: Any) -> str:
         return str(sql)
 
+    @property
+    def pool(self) -> Any:
+        _pool = self._pool
+        assert self._pool is not None, "Database is not connected"
+        return _pool
+
+    @pool.setter
+    def pool(self, value):
+        self._pool = value
+
     async def acquire(self) -> Any:
         conn = await self._acquire()
         init = self.init
@@ -243,13 +251,11 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
             return await init(conn)
         return conn
 
-    @abc.abstractmethod
     async def connect(self) -> None:
-        raise NotImplementedError
+        self.logger.info("Connecting to %s", self.url)
 
-    @abc.abstractmethod
     async def disconnect(self) -> None:
-        raise NotImplementedError
+        self.logger.info("Disconnecting from %s", self.url)
 
     @abc.abstractmethod
     async def _acquire(self) -> TVConnection:
@@ -277,18 +283,24 @@ with suppress(ImportError):
 
 with suppress(ImportError):
     from ._aiopg import Backend as AIOPGBackend
+    from ._aiopg import PoolBackend as AIOPGPoolBackend
 
     assert issubclass(AIOPGBackend, ABCDatabaseBackend)
+    assert issubclass(AIOPGPoolBackend, ABCDatabaseBackend)
 
 with suppress(ImportError):
     from ._asyncpg import Backend as AsyncPGBackend
+    from ._asyncpg import PoolBackend as AsyncPGPoolBackend
 
     assert issubclass(AsyncPGBackend, ABCDatabaseBackend)
+    assert issubclass(AsyncPGPoolBackend, ABCDatabaseBackend)
 
 with suppress(ImportError):
     from ._aiomysql import Backend as AIOMySQLBackend
+    from ._aiomysql import PoolBackend as AIOMySQLPoolBackend
 
     assert issubclass(AIOMySQLBackend, ABCDatabaseBackend)
+    assert issubclass(AIOMySQLPoolBackend, ABCDatabaseBackend)
 
 with suppress(ImportError):
     from ._aioodbc import Backend as AIOODBCBackend

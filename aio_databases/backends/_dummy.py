@@ -43,12 +43,6 @@ class Backend(ABCDatabaseBackend):
     db_type = "dummy"
     connection_cls = Connection
 
-    async def connect(self):
-        pass
-
-    async def disconnect(self):
-        pass
-
     async def _acquire(self):
         pass
 

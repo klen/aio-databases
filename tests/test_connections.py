@@ -96,7 +96,7 @@ async def test_connection_context_internal_exceptions(db: Database):
             raise ValueError("test")
 
 
-@pytest.mark.parametrize("backend", ["aiomysql", "aiopg", "asyncpg"])
+@pytest.mark.parametrize("backend", ["aiomysql+pool", "aiopg+pool", "asyncpg+pool"])
 async def test_pool(pool: Database, aiolib: str):
     db = pool
 

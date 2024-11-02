@@ -22,11 +22,24 @@ class Backend(ABCDatabaseBackend[Connection]):
     db_type = "postgresql"
     connection_cls = Session
 
-    pool: Optional[Pool] = None
-
     def __init__(self, *args, **kwargs):
         super(Backend, self).__init__(*args, **kwargs)
         self.dsn = self.url._replace(scheme="postgresql").geturl()
+
+    async def _acquire(self) -> Connection:
+        return await connect(self.dsn, **self.options)
+
+    async def release(self, conn: Connection):
+        conn.close()
+
+
+class PoolBackend(Backend):
+    name = "aiopg+pool"
+
+    _pool: Optional[Pool] = None
+
+    def __init__(self, *args, **kwargs):
+        super(PoolBackend, self).__init__(*args, **kwargs)
         self.pool_options = {
             name: self.options.pop(name)
             for name in ("minsize", "maxsize", "pool_recycle", "on_connect")
@@ -38,21 +51,11 @@ class Backend(ABCDatabaseBackend[Connection]):
 
     async def disconnect(self) -> None:
         pool = self.pool
-        assert pool is not None, "Database is not connected"
-        self.pool = None
         pool.close()
         await pool.wait_closed()
 
     async def _acquire(self) -> Connection:
-        pool = self.pool
-        if pool is None:
-            return await connect(self.dsn, **self.options)
-
-        return await pool.acquire()
+        return await self.pool.acquire()
 
     async def release(self, conn: Connection):
-        pool = self.pool
-        if pool is None:
-            conn.close()
-        else:
-            await pool.release(conn)
+        await self.pool.release(conn)

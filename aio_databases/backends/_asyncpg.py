@@ -86,10 +86,35 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
     db_type = "postgresql"
     connection_cls = Connection
 
-    pool: Optional[asyncpg.Pool] = None
+    def __init__(self, url, **kwargs):
+        super(Backend, self).__init__(url, **kwargs)
+        url = self.url
+        self.options["host"] = url.hostname
+        self.options["port"] = url.port
+        self.options["user"] = url.username
+        self.options["password"] = url.password
+        self.options["database"] = url.path.strip("/")
+
+    def __convert_sql__(self, sql: Any) -> str:
+        sql = str(sql)
+        if self.convert_params:
+            sql = RE_PARAM.sub(PGReplacer(), sql)
+
+        return sql
+
+    async def _acquire(self) -> asyncpg.Connection:
+        return await asyncpg.connect(**self.options)
+
+    async def release(self, conn: asyncpg.Connection):
+        await conn.close()
+
+
+class PoolBackend(Backend):
+    name = "asyncpg+pool"
+    _pool: Optional[asyncpg.Pool] = None
 
     def __init__(self, *args, **kwargs):
-        super(Backend, self).__init__(*args, **kwargs)
+        super(PoolBackend, self).__init__(*args, **kwargs)
         self.pool_options = {
             name: self.options.pop(name)
             for name in (
@@ -103,46 +128,14 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
             if name in self.options
         }
 
-    def __convert_sql__(self, sql: Any) -> str:
-        sql = str(sql)
-        if self.convert_params:
-            sql = RE_PARAM.sub(PGReplacer(), sql)
-
-        return sql
-
     async def connect(self) -> None:
-        self.pool = await asyncpg.create_pool(
-            **self.options,
-            **self.pool_options,
-            host=self.url.hostname,
-            port=self.url.port,
-            user=self.url.username,
-            password=self.url.password,
-            database=self.url.path.strip("/"),
-        )
+        self.pool = await asyncpg.create_pool(**self.options, **self.pool_options)
 
     async def disconnect(self) -> None:
-        pool = self.pool
-        assert pool is not None, "Database is not connected"
-        self.pool = None
-        await pool.close()
+        await self.pool.close()
 
     async def _acquire(self) -> asyncpg.Connection:
-        pool = self.pool
-        if pool is None:
-            return await asyncpg.connect(
-                **self.options,
-                host=self.url.hostname,
-                port=self.url.port,
-                user=self.url.username,
-                password=self.url.password,
-                database=self.url.path.strip("/"),
-            )
-        return await pool.acquire()
+        return await self.pool.acquire()
 
     async def release(self, conn: asyncpg.Connection):
-        pool = self.pool
-        if pool is None:
-            await conn.close()
-        else:
-            await pool.release(conn)
+        await self.pool.release(conn)

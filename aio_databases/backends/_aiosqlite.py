@@ -51,12 +51,6 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
             sql = RE_PARAM.sub(r"\1?", sql)
         return sql
 
-    async def connect(self) -> None:
-        self.logger.warning("'aiosqlite' doesn't support pools")
-
-    async def disconnect(self) -> None:
-        pass
-
     async def _acquire(self) -> aiosqlite.Connection:
         return await aiosqlite.connect(database=self.url.path, **self.options)
 

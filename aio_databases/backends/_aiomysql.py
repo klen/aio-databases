@@ -13,10 +13,29 @@ class Backend(ABCDatabaseBackend[Connection]):
     db_type = "mysql"
     connection_cls = Session
 
-    pool: Optional[Pool] = None
-
     def __init__(self, *args, **kwargs):
         super(Backend, self).__init__(*args, **kwargs)
+        url = self.url
+        self.options["host"] = url.hostname
+        self.options["port"] = url.port
+        self.options["user"] = url.username
+        self.options["password"] = url.password
+        self.options["db"] = url.path.strip("/")
+
+    async def _acquire(self) -> Connection:
+        return await connect(**self.options)
+
+    async def release(self, conn: Connection):
+        conn.close()
+
+
+class PoolBackend(Backend):
+    name = "aiomysql+pool"
+
+    _pool: Optional[Pool] = None
+
+    def __init__(self, *args, **kwargs):
+        super(PoolBackend, self).__init__(*args, **kwargs)
         self.pool_options = {
             name: self.options.pop(name)
             for name in ("minsize", "maxsize", "pool_recycle")
@@ -24,43 +43,15 @@ class Backend(ABCDatabaseBackend[Connection]):
         }
 
     async def connect(self) -> None:
-        self.pool = await create_pool(
-            **self.options,
-            **self.pool_options,
-            host=self.url.hostname,
-            port=self.url.port,
-            user=self.url.username,
-            password=self.url.password,
-            db=self.url.path.strip("/"),
-        )
+        self.pool = await create_pool(**self.options, **self.pool_options)
 
     async def disconnect(self) -> None:
         pool = self.pool
-        assert pool is not None, "Database is not connected"
-        self.pool = None
         pool.close()
         await pool.wait_closed()
 
     async def _acquire(self) -> Connection:
-        pool = self.pool
-        url = self.url
-        assert url.hostname
-        assert url.port
-        if pool is None:
-            return await connect(
-                **self.options,
-                host=url.hostname,
-                port=url.port,
-                user=url.username,
-                password=url.password or "",
-                db=url.path.strip("/"),
-            )
-
-        return await pool.acquire()
+        return await self.pool.acquire()
 
     async def release(self, conn: Connection):
-        pool = self.pool
-        if pool is None:
-            conn.close()
-        else:
-            await pool.release(conn)
+        await self.pool.release(conn)

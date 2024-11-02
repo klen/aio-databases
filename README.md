@@ -62,9 +62,23 @@ $ pip install aio-databases[aioodbc]    # asyncio
     # Initialize a database
     db = Database('sqlite:///:memory:')  # with default driver
 
-    # Flesh out the driver 
-    db = Database('aiosqlite:///:memory:', **driver_params)
+    # Flesh out the driver
+    db = Database('asyncpg+pool://test:test@localhost:5432/tests', maxsize=10)
 ```
+
+### Supported schemas
+
+- `aiomyql`
+- `aiomyql+pool`
+- `aiopg`
+- `aiopg+pool`
+- `asyncpg`
+- `asyncpg+pool`
+- `aioodbc`
+- `aioodbc+pool`
+- `aiosqlite`
+- `trio-mysql`
+- `triopg`
 
 ### Setup a pool of connections (optional)
 
