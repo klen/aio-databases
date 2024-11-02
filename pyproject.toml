@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aio-databases"
-version = "0.16.2"
+version = "1.0.0"
 homepage = "https://github.com/klen/aio-databases"
 repository = "https://github.com/klen/aio-databases"
 description = "Async support for various databases"
