@@ -1,27 +1,26 @@
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import pytest
 from pypika_orm import Manager, Model, fields
 
-BACKEND_PARAMS: Dict[str, Tuple[str, Dict[str, Any]]] = {
-    "aiomysql": ("aiomysql://root@127.0.0.1:3306/tests", {"autocommit": True}),
-    "aiomysql+pool": (
-        "aiomysql+pool://root@127.0.0.1:3306/tests",
-        {"maxsize": 2, "autocommit": True},
-    ),
-    "aiopg": ("aiopg://test:test@localhost:5432/tests", {}),
-    "aiopg+pool": ("aiopg+pool://test:test@localhost:5432/tests", {"maxsize": 2}),
-    "aiosqlite": ("aiosqlite:////tmp/aio-db-test.sqlite", {"convert_params": True}),
-    "asyncpg": ("asyncpg://test:test@localhost:5432/tests", {"convert_params": True}),
-    "asyncpg+pool": (
-        "asyncpg+pool://test:test@localhost:5432/tests",
-        {"min_size": 2, "max_size": 2, "convert_params": True},
-    ),
-    "trio-mysql": ("trio-mysql://root@127.0.0.1:3306/tests", {}),
-    # there is a separate test for triopg
-    # Doesnt supports python 3.9
-    #  }),
+BACKEND_URLS: dict[str, str] = {
+    "aiomysql": "aiomysql://root@127.0.0.1:3306/tests",
+    "aiomysql+pool": "aiomysql+pool://root@127.0.0.1:3306/tests",
+    "aiopg": "aiopg://test:test@localhost:5432/tests",
+    "aiopg+pool": "aiopg+pool://test:test@localhost:5432/tests",
+    "asyncpg": "asyncpg://test:test@localhost:5432/tests",
+    "asyncpg+pool": "asyncpg+pool://test:test@localhost:5432/tests",
+    "aiosqlite": "aiosqlite:////tmp/aio-db-test.sqlite",
+    "trio-mysql": "trio-mysql://root@127.0.0.1:3306/tests",
+}
+BACKEND_PARAMS: dict[str, dict[str, Any]] = {
+    "aiomysql": {"autocommit": True},
+    "aiomysql+pool": {"maxsize": 2, "autocommit": True},
+    "aiopg+pool": {"maxsize": 2},
+    "aiosqlite": {"convert_params": True},
+    "asyncpg": {"convert_params": True},
+    "asyncpg+pool": {"min_size": 2, "max_size": 2, "convert_params": True},
 }
 
 
@@ -43,7 +42,12 @@ def backend(request):
 
 
 @pytest.fixture
-def db(backend, aiolib):
+def dbparams(backend):
+    return BACKEND_PARAMS.get(backend, {})
+
+
+@pytest.fixture
+def db(backend, aiolib, dbparams):
     from aio_databases import Database
 
     if aiolib[0] == "trio" and backend not in {"trio-mysql", "triopg"}:
@@ -54,17 +58,17 @@ def db(backend, aiolib):
         "aiomysql+pool",
         "aiopg",
         "aiopg+pool",
-        "aiosqlite",
         "asyncpg",
         "asyncpg+pool",
+        "aiosqlite",
     }:
         return pytest.skip()
 
     if backend not in BACKEND_PARAMS:
         return pytest.skip()
 
-    url, params = BACKEND_PARAMS[backend]
-    return Database(url, **params)
+    url = BACKEND_URLS[backend]
+    return Database(url, **dbparams)
 
 
 @pytest.fixture(autouse=True)

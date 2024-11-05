@@ -96,9 +96,7 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
         self.options["password"] = url.password
         self.options["database"] = url.path.strip("/")
         if json:
-            self.init = lambda conn: conn.set_type_codec(
-                "json", encoder=dumps, decoder=loads, schema="pg_catalog"
-            )
+            self.init = asyncpg_init_json
 
     def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)
@@ -144,3 +142,8 @@ class PoolBackend(Backend):
 
     async def release(self, conn: asyncpg.Connection):
         await self.pool.release(conn)
+
+
+async def asyncpg_init_json(conn: asyncpg.Connection):
+    await conn.set_type_codec("json", encoder=dumps, decoder=loads, schema="pg_catalog")
+    return conn
