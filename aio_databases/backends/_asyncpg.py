@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from json import dumps, loads
 from typing import TYPE_CHECKING, Any, Optional
 
 import asyncpg
@@ -86,7 +87,7 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
     db_type = "postgresql"
     connection_cls = Connection
 
-    def __init__(self, url, **kwargs):
+    def __init__(self, url, *, json=False, **kwargs):
         super(Backend, self).__init__(url, **kwargs)
         url = self.url
         self.options["host"] = url.hostname
@@ -94,6 +95,10 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
         self.options["user"] = url.username
         self.options["password"] = url.password
         self.options["database"] = url.path.strip("/")
+        if json:
+            self.init = lambda conn: conn.set_type_codec(
+                "json", encoder=dumps, decoder=loads, schema="pg_catalog"
+            )
 
     def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)

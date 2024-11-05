@@ -22,8 +22,8 @@ class Backend(ABCDatabaseBackend[Connection]):
     db_type = "postgresql"
     connection_cls = Session
 
-    def __init__(self, *args, **kwargs):
-        super(Backend, self).__init__(*args, **kwargs)
+    def __init__(self, url, **kwargs):
+        super(Backend, self).__init__(url, **kwargs)
         self.dsn = self.url._replace(scheme="postgresql").geturl()
 
     async def _acquire(self) -> Connection:
