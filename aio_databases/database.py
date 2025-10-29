@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from .backends import BACKENDS, SHORTCUTS, ABCConnection, ABCDatabaseBackend, ABCTransaction
 from .log import logger
+from .url import redact_url
 
 if TYPE_CHECKING:
     import logging
@@ -22,9 +23,9 @@ class Database:
     is_connected: bool = False
 
     def __init__(self, url: str, *, logger: logging.Logger = logger, **options):
-        parsed_url = urlsplit(url)
+        self.parsed_url = urlsplit(url)
 
-        scheme = parsed_url.scheme
+        scheme = self.parsed_url.scheme
         scheme = SHORTCUTS.get(scheme, scheme)
         for backend_cls in BACKENDS:
             if scheme in (backend_cls.name, backend_cls.db_type):
@@ -34,12 +35,21 @@ class Database:
 
         self.url = url
         self.logger = logger
-        self.backend: ABCDatabaseBackend = backend_cls(parsed_url, logger=self.logger, **options)
+        self.backend: ABCDatabaseBackend = backend_cls(
+            self.parsed_url, logger=self.logger, **options
+        )
+
+    def _url_repr(self) -> str:
+        """Redact password from URL for representation."""
+        if self.parsed_url.password:
+            return redact_url(self.parsed_url).geturl()
+        return self.url
 
     async def connect(self) -> Database:
         """Open the database's pool."""
         if not self.is_connected:
-            self.logger.info("Database connect: %s", self.url)
+            # redact password from logs
+            self.logger.info("Database connect: %s", self._url_repr())
             await self.backend.connect()
             self.is_connected = True
 
@@ -49,7 +59,7 @@ class Database:
 
     async def disconnect(self, *exit_args) -> None:
         """Close connections and the database's pool."""
-        self.logger.info("Database disconnect: %s", self.url)
+        self.logger.info("Database disconnect: %s", self._url_repr())
 
         # Release connection
         cur_conn = self.current_conn
