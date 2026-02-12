@@ -6,6 +6,9 @@ requires-python = ">=3.10, <4"
 name = "aio-databases"
 version = "1.2.0"
 source = { editable = "." }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
 
 [package.optional-dependencies]
 aiomysql = [
@@ -53,6 +56,7 @@ requires-dist = [
     { name = "aiosqlite", marker = "extra == 'aiosqlite'" },
     { name = "asyncpg", marker = "extra == 'asyncpg'" },
     { name = "trio-mysql", marker = "extra == 'trio-mysql'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 provides-extras = ["asyncpg", "aiopg", "aiomysql", "aiosqlite", "aioodbc", "trio-mysql"]
 

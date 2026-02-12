@@ -4,7 +4,7 @@ import abc
 import asyncio
 from contextlib import suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Generic
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -14,6 +14,8 @@ from aio_databases.url import redact_url
 if TYPE_CHECKING:
     import logging
     from collections.abc import AsyncIterator
+
+    from typing_extensions import Self  # py310
 
     from aio_databases.types import TInitConnection, TRecord
 
