@@ -57,6 +57,7 @@ dev = [
   "trio_mysql",
   "ruff",
   "pre-commit",
+  "pyrefly>=0.52.0",
 ]
 
 [tool.pytest.ini_options]
