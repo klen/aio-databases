@@ -4,6 +4,7 @@ import sys
 from typing import Any
 
 import pytest
+from pypika import Dialects
 from pypika_orm import Manager, Model, fields
 
 from aio_databases import Database
@@ -93,11 +94,12 @@ def _setup_logging():
 
 @pytest.fixture
 def manager(db):
-    dialect = db.backend.db_type
-    # Fix for invalid dialect name in pypika_orm
-    if dialect == "postgresql":
-        dialect = "postgres"
-    return Manager(dialect=dialect)
+    mgr = Manager()
+    source = db.backend.db_type
+    if source == "sqlite":
+        source = "sqllite"
+    mgr.dialect = Dialects(source)
+    return mgr
 
 
 @pytest.fixture
