@@ -96,6 +96,16 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "test*.py" = ["FBT001"]
 
+[tool.bumpversion]
+current_version = "1.1.1"
+commit = false
+tag = false
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
 [tool.uv.build-backend]
 module-name = ["aio_databases"]
 module-root = ""
