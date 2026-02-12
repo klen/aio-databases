@@ -4,7 +4,7 @@ import abc
 import asyncio
 from contextlib import suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -36,15 +36,15 @@ class ABCTransaction(abc.ABC, Generic[TVConnection]):
         self.silent = silent
 
     @abc.abstractmethod
-    async def _start(self):
+    async def _start(self) -> Self:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _commit(self):
+    async def _commit(self) -> Self:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _rollback(self):
+    async def _rollback(self) -> Self:
         raise NotImplementedError
 
     async def __aenter__(self):
@@ -66,7 +66,7 @@ class ABCTransaction(abc.ABC, Generic[TVConnection]):
         await self._start()
         connection.transactions.add(self)
 
-    async def commit(self, *, silent: Optional[bool] = None):
+    async def commit(self, *, silent: bool | None = None):
         """Commit the transaction.
         :param silent: Do not raise an error when the connection is closed
         """
@@ -80,7 +80,7 @@ class ABCTransaction(abc.ABC, Generic[TVConnection]):
             raise RuntimeError("There is no an acquired connection to commit the transaction")
         return None
 
-    async def rollback(self, *, silent: Optional[bool] = None):
+    async def rollback(self, *, silent: bool | None = None):
         """Rollback the transaction.
         :param silent: Do not raise an error when the connection is closed
         """
@@ -99,13 +99,13 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
     transaction_cls: ClassVar[type[ABCTransaction]]
     lock_cls: type[asyncio.Lock] = asyncio.Lock
 
-    __slots__ = "backend", "logger", "transactions", "_conn", "_lock"
+    __slots__ = "_conn", "_lock", "backend", "logger", "transactions"
 
     def __init__(self, backend: ABCDatabaseBackend, **unsupported_params):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
         self.transactions: set[ABCTransaction] = set()
-        self._conn: Optional[TVConnection] = None
+        self._conn: TVConnection | None = None
         self._lock = self.lock_cls()
 
     @property
@@ -147,7 +147,7 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         async with self._lock:
             return await self._fetchmany(size, sql, *params, **options)
 
-    async def fetchone(self, query: Any, *params, **options) -> Optional[TRecord]:
+    async def fetchone(self, query: Any, *params, **options) -> TRecord | None:
         sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
@@ -175,15 +175,15 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _fetchall(self, query: str, *params, **options) -> list[TRecord]:
+    async def _fetchall(self, query: str, *params, **options) -> list:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _fetchmany(self, size: int, query: str, *params, **options) -> list[TRecord]:
+    async def _fetchmany(self, size: int, query: str, *params, **options) -> list:
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def _fetchone(self, query: str, *params, **options) -> Optional[TRecord]:
+    async def _fetchone(self, query: str, *params, **options) -> Any:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -191,7 +191,7 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _iterate(self, query: str, *params, **options) -> AsyncIterator[TRecord]:
+    def _iterate(self, query: str, *params, **options) -> AsyncIterator:
         raise NotImplementedError
 
     def transaction(self, **params) -> ABCTransaction[TVConnection]:
@@ -211,7 +211,7 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
         *,
         logger: logging.Logger = base_logger,
         convert_params: bool = False,
-        init: Optional[TInitConnection] = None,
+        init: TInitConnection | None = None,
         **options,
     ):
         self.url = url
@@ -311,10 +311,5 @@ with suppress(ImportError):
     from ._trio_mysql import Backend as TrioMySQLBackend
 
     assert issubclass(TrioMySQLBackend, ABCDatabaseBackend)
-
-with suppress(ImportError):
-    from ._triopg import Backend as TrioPGBackend
-
-    assert issubclass(TrioPGBackend, ABCDatabaseBackend)
 
 # ruff: noqa: E402

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from json import dumps, loads
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Transaction(ABCTransaction[asyncpg.Connection]):
-    _trans: Optional[AsyncPGTransaction] = None
+    _trans: AsyncPGTransaction | None = None
 
     @property
     def trans(self) -> AsyncPGTransaction:
@@ -64,7 +64,7 @@ class Connection(ABCConnection[asyncpg.Connection]):
             cur = await conn.cursor(query, *params)
             return await cur.fetch(size)
 
-    async def _fetchone(self, query: str, *params, **options) -> Optional[asyncpg.Record]:
+    async def _fetchone(self, query: str, *params, **options) -> asyncpg.Record | None:
         conn = self._conn
         assert conn is not None
         return await conn.fetchrow(query, *params, **options)
@@ -114,7 +114,7 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
 
 class PoolBackend(Backend):
     name = "asyncpg+pool"
-    _pool: Optional[asyncpg.Pool] = None
+    _pool: asyncpg.Pool | None = None
 
     def __init__(self, *args, **kwargs):
         super(PoolBackend, self).__init__(*args, **kwargs)

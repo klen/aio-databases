@@ -1,8 +1,12 @@
 import logging
+import platform
+import sys
 from typing import Any
 
 import pytest
 from pypika_orm import Manager, Model, fields
+
+from aio_databases import Database
 
 BACKEND_URLS: dict[str, str] = {
     "aiomysql": "aiomysql://root@127.0.0.1:3306/tests",
@@ -27,7 +31,7 @@ BACKEND_PARAMS: dict[str, dict[str, Any]] = {
 @pytest.fixture(
     scope="session",
     params=[
-        pytest.param(("asyncio", {"use_uvloop": False}), id="asyncio"),
+        pytest.param(("asyncio", {"loop_factory": None}), id="asyncio"),
         "trio",
     ],
 )
@@ -48,12 +52,16 @@ def dbparams(backend):
 
 @pytest.fixture
 def db(backend, aiolib, dbparams):
-    from aio_databases import Database
 
-    if aiolib[0] == "trio" and backend not in {"trio-mysql", "triopg"}:
-        return pytest.skip()
+    lib = aiolib[0]
 
-    if aiolib[0] == "asyncio" and backend not in {
+    if lib == "trio" and backend != "trio-mysql":
+        return pytest.skip("Trio is only supported by trio-mysql")
+
+    if lib == "trio" and sys.version_info >= (3, 14):
+        return pytest.skip("Trio is not supported on Python 3.14 and above")
+
+    if lib == "asyncio" and backend not in {
         "aiomysql",
         "aiomysql+pool",
         "aiopg",
@@ -111,6 +119,5 @@ def comment_cls(user_cls):
 
 @pytest.fixture(scope="session")
 def arm():
-    import platform
 
     return platform.processor() == "arm"

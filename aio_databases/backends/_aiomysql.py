@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from aiomysql import Connection, Pool, connect, create_pool
 
 from . import ABCDatabaseBackend
@@ -32,7 +30,7 @@ class Backend(ABCDatabaseBackend[Connection]):
 class PoolBackend(Backend):
     name = "aiomysql+pool"
 
-    _pool: Optional[Pool] = None
+    _pool: Pool | None = None
 
     def __init__(self, *args, **kwargs):
         super(PoolBackend, self).__init__(*args, **kwargs)

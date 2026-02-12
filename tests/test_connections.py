@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 
 import pytest
 import trio
 
-if TYPE_CHECKING:
-    from aio_databases import Database
+from aio_databases import Database
 
 
 async def test_default_connection(db: Database):
@@ -15,7 +13,6 @@ async def test_default_connection(db: Database):
 
 
 async def test_db_context(db):
-    from aio_databases import Database
 
     database = Database("dummy://")
     database.backend = db.backend

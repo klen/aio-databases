@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from .backends import BACKENDS, SHORTCUTS, ABCConnection, ABCDatabaseBackend, ABCTransaction
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from .types import TRecord
 
-current_conn: ContextVar[Optional[ABCConnection]] = ContextVar("current_conn", default=None)
+current_conn: ContextVar[ABCConnection | None] = ContextVar("current_conn", default=None)
 
 
 class Database:
@@ -64,7 +64,7 @@ class Database:
     __aexit__ = disconnect
 
     @property
-    def current_conn(self) -> Optional[ABCConnection]:
+    def current_conn(self) -> ABCConnection | None:
         return current_conn.get()
 
     def connection(self, *, create: bool = True, **params) -> ConnectionContext:
@@ -95,7 +95,7 @@ class Database:
         async with self.connection(create=False) as conn:
             return await conn.fetchmany(size, query, *params, **options)
 
-    async def fetchone(self, query: Any, *params, **options) -> Optional[TRecord]:
+    async def fetchone(self, query: Any, *params, **options) -> TRecord | None:
         """Fetch a row."""
         async with self.connection(create=False) as conn:
             return await conn.fetchone(query, *params, **options)
@@ -113,7 +113,7 @@ class Database:
 
 
 class ConnectionContext:
-    __slots__ = "create_conn", "conn", "token"
+    __slots__ = "conn", "create_conn", "token"
 
     if TYPE_CHECKING:
         conn: ABCConnection
@@ -147,7 +147,7 @@ class ConnectionContext:
 
 
 class TransactionContext(ConnectionContext):
-    __slots__ = "release_conn", "conn", "token", "trans"
+    __slots__ = "conn", "release_conn", "token", "trans"
 
     if TYPE_CHECKING:
         trans: ABCTransaction
@@ -156,7 +156,7 @@ class TransactionContext(ConnectionContext):
         super(TransactionContext, self).__init__(backend, use_existing=use_existing)
         self.trans = self.conn.transaction(**params)
 
-    async def __aenter__(self):
+    async def __aenter__(self):  # type: ignore[override]
         await super(TransactionContext, self).__aenter__()
         await self.trans.__aenter__()
         return self.trans

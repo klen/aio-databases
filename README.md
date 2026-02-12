@@ -9,27 +9,26 @@ PostgreSQL, MySQL).
 
 ## Features
 
-* Has no dependencies (except databases drivers)
-* Supports [asyncio](https://docs.python.org/3/library/asyncio.html) and [trio](https://github.com/python-trio/trio)
-* Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
+- Has no dependencies (except databases drivers)
+- Supports [asyncio](https://docs.python.org/3/library/asyncio.html) and [trio](https://github.com/python-trio/trio)
+- Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
   [aiomysql](https://github.com/aio-libs/aiomysql),
   [aiopg](https://github.com/aio-libs/aiopg),
   [asyncpg](https://github.com/MagicStack/asyncpg),
-  [triopg](https://github.com/python-trio/triopg),
   [trio_mysql](https://github.com/python-trio/trio-mysql)
-* Manage pools of connections
-* Manage transactions
+- Manage pools of connections
+- Manage transactions
 
 ## Requirements
 
-* python >= 3.9
+- python >= 3.10
 
 ## Installation
 
 **aio-databases** should be installed using pip:
 
 ```shell
-$ pip install aio-databases
+pip install aio-databases
 ```
 
 You have to choose and install the required database drivers with:
@@ -45,12 +44,10 @@ $ pip install aio-databases[trio_mysql] # trio
 # To support PostgreSQL (choose one)
 $ pip install aio-databases[aiopg]      # asyncio
 $ pip install aio-databases[asyncpg]    # asyncio
-$ pip install aio-databases[triopg]     # trio
 
 # To support ODBC (alpha state)
 $ pip install aio-databases[aioodbc]    # asyncio
 ```
-
 
 ## Usage
 
@@ -78,7 +75,6 @@ $ pip install aio-databases[aioodbc]    # asyncio
 - `aioodbc+pool`
 - `aiosqlite`
 - `trio-mysql`
-- `triopg`
 
 ### Setup a pool of connections (optional)
 
@@ -131,7 +127,7 @@ If a pool is setup it will be used
     assert result == 4
 ```
 
-* Iterate through rows one by one
+- Iterate through rows one by one
 
 ```python
 
@@ -169,6 +165,7 @@ Manually open and close a connection
 ```
 
 If there any connection already `db.method` would be using the current one
+
 ```python
     async with db.connection(): # connection would be acquired here
         await db.fetchone('select %s', 42)  # the connection is used
@@ -201,13 +198,11 @@ If there any connection already `db.method` would be using the current one
 ## Bug tracker
 
 If you have any suggestions, bug reports or annoyances please report them to
-the issue tracker at https://github.com/klen/aio-databases/issues
-
+the issue tracker at <https://github.com/klen/aio-databases/issues>
 
 ## Contributing
 
-Development of the project happens at: https://github.com/klen/aio-databases
-
+Development of the project happens at: <https://github.com/klen/aio-databases>
 
 ## License
 

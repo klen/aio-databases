@@ -6,7 +6,7 @@ from aio_databases.database import Database
 @pytest.fixture
 def aiolib():
     """There is only backend for asyncio."""
-    return ("asyncio", {"use_uvloop": False})
+    return ("asyncio", {"loop_factory": None})
 
 
 @pytest.fixture

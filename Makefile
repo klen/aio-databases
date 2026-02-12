@@ -1,56 +1,59 @@
 VIRTUAL_ENV ?= .venv
 
-$(VIRTUAL_ENV): poetry.lock .pre-commit-config.yaml
-	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@poetry install --with dev
-	@poetry run pre-commit install
-	@poetry self add poetry-bumpversion
+$(VIRTUAL_ENV): uv.lock pyproject.toml
+	@uv sync
+	@uv run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
-.PHONY: test
-# target: test - Runs tests
-t test: $(VIRTUAL_ENV)
+.PHONY: test t
+test t: $(VIRTUAL_ENV)
 	docker start postgres mysql
-	@poetry run pytest --log-format "%(levelname)s %(message)s" tests
+	@uv run pytest tests
 
-.PHONY: mypy
-# target: mypy - Code checking
-mypy: $(VIRTUAL_ENV)
-	@poetry run mypy
-
+.PHONY: types
+types: $(VIRTUAL_ENV)
+	@uv run pyrefly check
 
 VERSION	?= minor
 
-.PHONY: version
-version: $(VIRTUAL_ENV)
+.PHONY: release
+VPART?=minor
+# target: release - Bump version
+release:
+	git checkout master
+	git pull
 	git checkout develop
 	git pull
+	git merge master
+	uvx bump-my-version bump $(VPART)
+	uv lock
+	@VERSION="$$(uv version --short)"; \
+		{ \
+			printf 'build(release): %s\n\n' "$$VERSION"; \
+			printf 'Changes:\n\n'; \
+			git log --oneline --pretty=format:'%s [%an]' master..develop | grep -Evi 'github|^Merge' || true; \
+		} | git commit -a -F -; \
+		git tag "$$VERSION";
 	git checkout master
 	git merge develop
-	git pull
-	@poetry version $(VERSION)
-	git commit -am "build(release): `poetry version -s`"
-	git tag `poetry version -s`
 	git checkout develop
-	git merge master
-	git push --tags origin develop master
+	git push origin develop master --tags
+	@echo "Release process complete for `uv version --short`"
 
 .PHONY: minor
-minor:
-	make version VERSION=minor
+minor: release
 
 .PHONY: patch
 patch:
-	make version VERSION=patch
+	make release VPART=patch
 
 .PHONY: major
 major:
-	make version VERSION=major
+	make release VPART=major
 
-.PHONY: clean
-# target: clean - Display callable targets
-clean:
-	rm -rf build/ dist/ docs/_build *.egg-info
-	find $(CURDIR) -name "*.py[co]" -delete
-	find $(CURDIR) -name "*.orig" -delete
-	find $(CURDIR) -name "__pycache__" | xargs rm -rf
+version v:
+	uv version --short
+
+.PHONY: setup-postgres
+setup-postgres:
+	docker exec -i postgres psql -U postgres < tests/assets/init-postgres.sql

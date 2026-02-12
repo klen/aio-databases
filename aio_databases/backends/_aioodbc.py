@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import aioodbc
 
@@ -21,7 +21,7 @@ class Backend(ABCDatabaseBackend[aioodbc.Connection]):
     db_type = "odbc"
     connection_cls = Connection
 
-    def __init__(self, *args, db_type: Optional[str] = None, **kwargs):
+    def __init__(self, *args, db_type: str | None = None, **kwargs):
         self.db_type = db_type or self.db_type
         super(Backend, self).__init__(*args, **kwargs)
 
@@ -41,9 +41,9 @@ class Backend(ABCDatabaseBackend[aioodbc.Connection]):
 class PoolBackend(Backend):
     name = "aioodbc+pool"
 
-    _pool: Optional[aioodbc.Pool] = None
+    _pool: aioodbc.Pool | None = None
 
-    def __init__(self, *args, db_type: Optional[str] = None, **kwargs):
+    def __init__(self, *args, db_type: str | None = None, **kwargs):
         super(PoolBackend, self).__init__(*args, **kwargs)
         self.pool_options = {
             name: self.options.pop(name)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from aiopg import Connection, Pool, connect, create_pool
 
@@ -36,7 +36,7 @@ class Backend(ABCDatabaseBackend[Connection]):
 class PoolBackend(Backend):
     name = "aiopg+pool"
 
-    _pool: Optional[Pool] = None
+    _pool: Pool | None = None
 
     def __init__(self, *args, **kwargs):
         super(PoolBackend, self).__init__(*args, **kwargs)

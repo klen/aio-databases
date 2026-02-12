@@ -53,7 +53,7 @@ async def test_auto_rollback(db: Database, user_cls: Model, manager: Manager):
             await db.execute(user_manager.insert(name="Jim", fullname="Jim Jones"))
             res = await db.fetchall(user_manager.select())
             assert len(res) == 1
-            raise Exception("test")  # noqa:
+            raise Exception("test")  # noqa:  TRY002
 
     res = await db.fetchall(user_manager.select())
     assert len(res) == 0
@@ -131,7 +131,6 @@ async def test_connections(db: Database):
 @pytest.mark.skip("not sure the lib has to implement it")
 @pytest.mark.parametrize("aiolib", ["asyncio"])
 async def test_concurency(db: Database, manager: Manager, user_cls: Model):
-    import asyncio
 
     user_manager = manager(user_cls)
     async with db.connection():

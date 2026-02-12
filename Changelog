@@ -1,3 +1,10 @@
+2026-02-12 klen
+
+  * Migrate to UV
+  * Add python 3.14 support
+  * Drop python 3.9 support
+  * Drop triopg support
+
 2023-03-18 klen
 
 	* Drop python 3.7 support

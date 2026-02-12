@@ -1,93 +1,73 @@
-[tool.poetry]
+[project]
 name = "aio-databases"
 version = "1.1.1"
-homepage = "https://github.com/klen/aio-databases"
-repository = "https://github.com/klen/aio-databases"
 description = "Async support for various databases"
+authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
+requires-python = ">=3.10,<4"
 readme = "README.md"
 license = "MIT"
-keywords = ["asyncio", "trio", "databases", "mysql", "sqlite", "postgres", "postgresql"]
-authors = ["Kirill Klenov <horneds@gmail.com>"]
+keywords = [
+  "asyncio",
+  "trio",
+  "databases",
+  "mysql",
+  "sqlite",
+  "postgres",
+  "postgresql",
+]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Framework :: AsyncIO",
   "Framework :: Trio",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-
-asyncpg = { version = "*", optional = true }
-aiopg = { version = "*", optional = true }
-aiomysql = { version = "*", optional = true }
-aiosqlite = { version = "*", optional = true }
-aioodbc = { version = "*", optional = true }
-triopg = { version = "*", optional = true }
-trio_mysql = { version = "*", optional = true }
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 asyncpg = ["asyncpg"]
 aiopg = ["aiopg"]
 aiomysql = ["aiomysql"]
 aiosqlite = ["aiosqlite"]
 aioodbc = ["aioodbc"]
-triopg = ["triopg"]
 trio_mysql = ["trio_mysql"]
 
-[tool.poetry.group.dev.dependencies]
-aiomysql = "*"
-aioodbc = "*"
-aiopg = "*"
-aiosqlite = "*"
-asyncpg = "*"
-cryptography = "*"
-psycopg2-binary = "*"
-pypika-orm = "^0.0.11"
-pytest = "*"
-pytest-aio = { version = "^1", extras = ["trio"] }
-pytest-mypy = "*"
-trio_asyncio = "*"
-trio_mysql = "*"
-triopg = "*"
-black = "*"
-ruff = "*"
-pre-commit = "*"
+[project.urls]
+Homepage = "https://github.com/klen/aio-databases"
+Repository = "https://github.com/klen/aio-databases"
+
+[dependency-groups]
+dev = [
+  "aiomysql",
+  "aioodbc",
+  "aiopg",
+  "aiosqlite",
+  "asyncpg",
+  "cryptography",
+  "psycopg2-binary",
+  "pypika-orm",
+  "pytest",
+  "pytest-aio[trio]",
+  "trio_mysql",
+  "ruff",
+  "pre-commit",
+]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --mypy -xsvl tests"
+addopts = "--strict-markers -xsvl tests"
 
-[tool.mypy]
-packages = ["aio_databases", "tests"]
-ignore_missing_imports = true
-check_untyped_defs = true
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py39,py310,py311,py312
-isolated_buiid = true
-
-[testenv]
-allowlist_externals = poetry
-skip_install = true
-commands_pre =
-    poetry install
-deps = -e .[dev]
-commands =
-    poetry run pytest tests --import-mode importlib
-"""
+[tool.pyrefly]
+project-includes = ["aio_databases"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 exclude = [".venv", "docs", "examples"]
 
 [tool.ruff.lint]
@@ -115,11 +95,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "test*.py" = ["FBT001"]
 
-[tool.black]
-line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
-preview = true
+[tool.uv.build-backend]
+module-name = ["aio_databases"]
+module-root = ""
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"

@@ -1,8 +1,11 @@
 import pytest
 
+from aio_databases import Database
+from aio_databases.backends import BACKENDS
+from aio_databases.record import Record
+
 
 def test_backends(arm: bool):
-    from aio_databases.backends import BACKENDS
 
     assert BACKENDS
     db_types = {b.db_type for b in BACKENDS}
@@ -13,7 +16,6 @@ def test_backends(arm: bool):
 
 
 def test_database(arm: bool):
-    from aio_databases import Database
 
     with pytest.raises(ValueError, match="Unknown backend"):
         Database("unknown://db.sqlite")
@@ -29,14 +31,12 @@ def test_database(arm: bool):
     assert Database("asyncpg://db.sqlite")
 
     assert Database("trio-mysql://localhost")
-    # assert Database("triopg://localhost")  # noqa: ERA
 
     if not arm:
         assert Database("aioodbc://localhost", dsn="Driver=SQLite;Database=db.sqlite")
 
 
 def test_record():
-    from aio_databases.record import Record
 
     rec = Record((1, "test"), [["id"], ["name"]])
     assert rec
@@ -63,8 +63,6 @@ def test_record():
 
 
 def test_params():
-    from aio_databases import Database
-
     db = Database("asyncpg://localhost", convert_params=True)
     assert db.backend.__convert_sql__('select "%s", %s') == 'select "$1", $2'
     assert db.backend.__convert_sql__('select "%%s"') == 'select "%%s"'

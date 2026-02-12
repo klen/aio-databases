@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from aio_databases import Database
 
 
-@pytest.fixture()
+@pytest.fixture
 async def schema(pool: Database, user_cls: Model, manager: Manager):
     user_manager = manager(user_cls)
 
@@ -76,7 +76,7 @@ async def test_execute(db: Database, user_cls: Model, manager: Manager, schema):
     user_manager = manager(user_cls)
     await db.execute(user_manager.insert(name="Jim", fullname="Tom Smith"))
     await db.execute(user_manager.insert(name="Jim", fullname="Tom Smith"))
-    updated, lastid = await db.execute(user_manager.update().set(user_cls.name, "Tom"))
+    updated, _ = await db.execute(user_manager.update().set(user_cls.name, "Tom"))
     assert updated == 2
 
 
