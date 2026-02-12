@@ -9,6 +9,7 @@ from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
 from aio_databases.types import TVConnection
+from aio_databases.url import redact_url
 
 if TYPE_CHECKING:
     import logging
@@ -252,10 +253,10 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
         return conn
 
     async def connect(self) -> None:
-        self.logger.info("Connecting to %s", self.url)
+        self.logger.info("Connecting to %s", redact_url(self.url).geturl())
 
     async def disconnect(self) -> None:
-        self.logger.info("Disconnecting from %s", self.url)
+        self.logger.info("Disconnecting from %s", redact_url(self.url).geturl())
 
     @abc.abstractmethod
     async def _acquire(self) -> TVConnection:
