@@ -1,6 +1,6 @@
 [project]
 name = "aio-databases"
-version = "1.1.1"
+version = "1.2.0"
 description = "Async support for various databases"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 requires-python = ">=3.10,<4"
@@ -97,7 +97,7 @@ ignore = [
 "test*.py" = ["FBT001"]
 
 [tool.bumpversion]
-current_version = "1.1.1"
+current_version = "1.2.0"
 commit = false
 tag = false
 
