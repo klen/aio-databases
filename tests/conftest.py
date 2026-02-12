@@ -93,7 +93,11 @@ def _setup_logging():
 
 @pytest.fixture
 def manager(db):
-    return Manager(dialect=db.backend.db_type)
+    dialect = db.backend.db_type
+    # Fix for invalid dialect name in pypika_orm
+    if dialect == "postgresql":
+        dialect = "postgres"
+    return Manager(dialect=dialect)
 
 
 @pytest.fixture
