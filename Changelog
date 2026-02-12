@@ -4,6 +4,7 @@
   * Add python 3.14 support
   * Drop python 3.9 support
   * Drop triopg support
+  * Do not log passwords when logging db urls
 
 2023-03-18 klen
 
