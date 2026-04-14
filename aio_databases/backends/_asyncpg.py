@@ -146,4 +146,5 @@ class PoolBackend(Backend):
 
 async def asyncpg_init_json(conn: asyncpg.Connection):
     await conn.set_type_codec("json", encoder=dumps, decoder=loads, schema="pg_catalog")
+    await conn.set_type_codec("jsonb", encoder=dumps, decoder=loads, schema="pg_catalog")
     return conn

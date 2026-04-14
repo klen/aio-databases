@@ -68,6 +68,7 @@ addopts = "--strict-markers -xsvl tests"
 project-includes = ["aio_databases"]
 
 [tool.ruff]
+include = ["muffin", "tests"]
 line-length = 100
 target-version = "py310"
 exclude = [".venv", "docs", "examples"]
