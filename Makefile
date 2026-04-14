@@ -16,6 +16,7 @@ types: $(VIRTUAL_ENV)
 
 VERSION	?= minor
 MAIN_BRANCH = master
+STAGE_BRANCH = develop
 
 .PHONY: release
 VPART?=minor
