@@ -15,29 +15,32 @@ types: $(VIRTUAL_ENV)
 	@uv run pyrefly check
 
 VERSION	?= minor
+MAIN_BRANCH = master
 
 .PHONY: release
 VPART?=minor
 # target: release - Bump version
+# target: release - Bump version
 release:
-	git checkout master
+	git checkout $(MAIN_BRANCH)
 	git pull
-	git checkout develop
+	git checkout $(STAGE_BRANCH)
 	git pull
-	git merge master
 	uvx bump-my-version bump $(VPART)
 	uv lock
 	@VERSION="$$(uv version --short)"; \
 		{ \
 			printf 'build(release): %s\n\n' "$$VERSION"; \
 			printf 'Changes:\n\n'; \
-			git log --oneline --pretty=format:'%s [%an]' master..develop | grep -Evi 'github|^Merge' || true; \
+			git log --oneline --pretty=format:'%s [%an]' $(MAIN_BRANCH)..$(STAGE_BRANCH) | grep -Evi 'github|^Merge' || true; \
 		} | git commit -a -F -; \
-		git tag "$$VERSION";
-	git checkout master
-	git merge develop
-	git checkout develop
-	git push origin develop master --tags
+		git tag -a "$$VERSION" -m "$$VERSION";
+	git checkout $(MAIN_BRANCH)
+	git merge $(STAGE_BRANCH)
+	git checkout $(STAGE_BRANCH)
+	git merge $(MAIN_BRANCH)
+	@git -c push.followTags=false push origin $(STAGE_BRANCH) $(MAIN_BRANCH)
+	@git push --tags origin
 	@echo "Release process complete for `uv version --short`"
 
 .PHONY: minor
