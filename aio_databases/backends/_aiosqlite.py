@@ -28,8 +28,6 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
         if ":memory:" in url.path:
             url = url._replace(path="")
-        elif url.path:
-            url = url._replace(path=url.path[1:])
 
         if init is None and (pragmas or functions):
 

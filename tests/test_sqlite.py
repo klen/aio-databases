@@ -59,6 +59,19 @@ async def test_database(tmp_path):
         assert res == datetime.now(tz=timezone.utc).day
 
 
+async def test_sqlite_three_slash_url_is_absolute(tmp_path):
+    # Three-slash URLs (sqlite:///path) should resolve to absolute paths.
+    # The leading '/' in url.path must not be stripped.
+    db_path = tmp_path / "absolute.db"
+    # Remove leading '/' so the URL has exactly 3 slashes; urlsplit
+    # will add it back into url.path.
+    relative_from_root = str(db_path).lstrip("/")
+    db = Database(f"sqlite:///{relative_from_root}")
+    async with db, db.connection():
+        await db.execute("CREATE TABLE t (x INT)")
+    assert db_path.exists()
+
+
 async def test_persistent_db(tmp_path, user_cls: Model, manager: Manager):
 
     user_manager = manager(user_cls)
