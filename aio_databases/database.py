@@ -87,7 +87,7 @@ class Database:
 
         # Release connection
         cur_conn = self.current_conn
-        if cur_conn and cur_conn.is_ready and cur_conn.backend is self.backend:
+        if cur_conn and cur_conn.is_ready:
             await cur_conn.release()
             current_conn.set(None)
 

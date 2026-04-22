@@ -75,3 +75,22 @@ async def test_replica_transaction_not_allowed():
             async with db.transaction():
                 result = await db.fetchval("SELECT 42")
                 assert result == 42
+
+
+async def test_replica_disconnet():
+    db = Database("sqlite:///:memory:", replicas=["sqlite:///:memory:"])
+
+    async with db.replica():
+        conn = db.current_conn
+        await db.disconnect()
+        assert db.current_conn is None
+        assert not conn.is_ready
+
+
+async def test_disconnect_inside_replica_context_exit_is_safe():
+    db = Database("sqlite:///:memory:", replicas=["sqlite:///:memory:"])
+
+    await db.connect()
+
+    async with db.replica():
+        await db.disconnect()
