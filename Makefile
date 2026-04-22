@@ -14,13 +14,15 @@ test t: $(VIRTUAL_ENV)
 types: $(VIRTUAL_ENV)
 	@uv run pyrefly check
 
-VERSION	?= minor
+# ==============
+#  Bump version
+# ==============
+
+VPART	?= minor
 MAIN_BRANCH = master
 STAGE_BRANCH = develop
 
 .PHONY: release
-VPART?=minor
-# target: release - Bump version
 # target: release - Bump version
 release:
 	git checkout $(MAIN_BRANCH)
@@ -34,14 +36,14 @@ release:
 			printf 'build(release): %s\n\n' "$$VERSION"; \
 			printf 'Changes:\n\n'; \
 			git log --oneline --pretty=format:'%s [%an]' $(MAIN_BRANCH)..$(STAGE_BRANCH) | grep -Evi 'github|^Merge' || true; \
-		} | git commit -a -F -; \
-		git tag -a "$$VERSION" -m "$$VERSION";
+		} | git commit -a -F -
 	git checkout $(MAIN_BRANCH)
 	git merge $(STAGE_BRANCH)
 	git checkout $(STAGE_BRANCH)
 	git merge $(MAIN_BRANCH)
-	@git -c push.followTags=false push origin $(STAGE_BRANCH) $(MAIN_BRANCH)
-	@git push --tags origin
+	@VERSION="$$(uv version --short)"; \
+		git tag -a "$$VERSION" -m "$$VERSION"; \
+		git push --atomic origin $(STAGE_BRANCH) $(MAIN_BRANCH) "refs/tags/$$VERSION"
 	@echo "Release process complete for `uv version --short`"
 
 .PHONY: minor
