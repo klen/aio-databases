@@ -94,3 +94,41 @@ async def test_disconnect_inside_replica_context_exit_is_safe():
 
     async with db.replica():
         await db.disconnect()
+
+
+async def test_replica_uses_own_connection(tmp_path):
+    """Verify that replica reads from its own database, not the primary."""
+    primary_path = tmp_path / "primary.db"
+    replica_path = tmp_path / "replica.db"
+
+    # Seed primary and replica with the same schema but different data
+    db_primary = Database(f"sqlite:///{primary_path}")
+    async with db_primary:
+        await db_primary.execute("CREATE TABLE items (name TEXT)")
+        await db_primary.execute("INSERT INTO items VALUES ('primary-item')")
+
+    db_replica = Database(f"sqlite:///{replica_path}")
+    async with db_replica:
+        await db_replica.execute("CREATE TABLE items (name TEXT)")
+        await db_replica.execute("INSERT INTO items VALUES ('replica-item')")
+        await db_replica.execute("INSERT INTO items VALUES ('replica-item-2')")
+
+    # Now use the combined Database with replica configured
+    db = Database(f"sqlite:///{primary_path}", replicas=[f"sqlite:///{replica_path}"])
+
+    async with db:
+        # Primary sees its own data
+        names = await db.fetchall("SELECT name FROM items")
+        assert names == [("primary-item",)]
+
+        async with db.replica():
+            # Replica sees its own data (two rows)
+            names = await db.fetchall("SELECT name FROM items")
+            assert {n[0] for n in names} == {"replica-item", "replica-item-2"}
+
+            count = await db.fetchval("SELECT COUNT(*) FROM items")
+            assert count == 2
+
+        # Back to primary: still one row
+        count = await db.fetchval("SELECT COUNT(*) FROM items")
+        assert count == 1
