@@ -18,6 +18,7 @@ PostgreSQL, MySQL).
   [trio_mysql](https://github.com/python-trio/trio-mysql)
 - Manage pools of connections
 - Manage transactions
+- Route read queries to replicas with write protection
 
 ## Requirements
 
@@ -193,6 +194,40 @@ If there any connection already `db.method` would be using the current one
     # Create a new connection and start a transaction
     async with db.tranction(True) as trans:
         # do some work ...
+```
+
+### Replicas
+
+Configure replicas and route reads through them.
+
+```python
+    db = Database(
+        'asyncpg://primary/db',
+        replicas=[
+            'asyncpg://replica-1/db',
+            'asyncpg://replica-2/db',
+        ]
+    )
+```
+
+Use `db.replica()` as an async context manager. Inside the block all queries run on a replica connection. `execute` and `executemany` raise `ReadOnlyError`, while `fetch*` queries work normally. Transactions are also blocked on replicas.
+
+```python
+    async with db.replica():
+        rows = await db.fetchall('select * from users')
+        # raises ReadOnlyError:
+        # await db.execute("insert into users ...")
+```
+
+Nested primary connections are allowed inside a replica block.
+
+```python
+    async with db.replica():
+        users = await db.fetchall('select * from users')
+
+        async with db.connection():
+            await db.execute('insert into users ...')
+```
 ```
 
 ## Bug tracker

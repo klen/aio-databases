@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
+from random import choice
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -22,10 +23,26 @@ class Database:
     backend: ABCDatabaseBackend
     is_connected: bool = False
 
-    def __init__(self, url: str, *, logger: logging.Logger = logger, **options):
-        self.parsed_url = urlsplit(url)
+    def __init__(
+        self,
+        url: str,
+        *,
+        logger: logging.Logger = logger,
+        replicas: list[str] | None = None,
+        **options,
+    ):
+        self.url = url
+        self.logger = logger
+        self.backend = self._create_backend(url, **options)
 
-        scheme = self.parsed_url.scheme
+        self.replica_backends: list[ABCDatabaseBackend] = []
+        if replicas:
+            for replica_url in replicas:
+                self.replica_backends.append(self._create_backend(replica_url, **options))
+
+    def _create_backend(self, url: str, **options) -> ABCDatabaseBackend:
+        parsed_url = urlsplit(url)
+        scheme = parsed_url.scheme
         scheme = SHORTCUTS.get(scheme, scheme)
         for backend_cls in BACKENDS:
             if scheme in (backend_cls.name, backend_cls.db_type):
@@ -33,17 +50,18 @@ class Database:
         else:
             raise ValueError(f"Unknown backend: '{scheme}' or driver is not installed")
 
-        self.url = url
-        self.logger = logger
-        self.backend: ABCDatabaseBackend = backend_cls(
-            self.parsed_url, logger=self.logger, **options
-        )
+        return backend_cls(parsed_url, logger=self.logger, **options)
 
-    def _url_repr(self) -> str:
+    @property
+    def parsed_url(self):
+        return self.backend.url
+
+    def _url_repr(self, url: str | None = None) -> str:
         """Redact password from URL for representation."""
-        if self.parsed_url.password:
-            return redact_url(self.parsed_url).geturl()
-        return self.url
+        parsed = urlsplit(url) if url is not None else self.backend.url
+        if parsed.password:
+            return redact_url(parsed).geturl()
+        return url if url is not None else self.url
 
     async def connect(self) -> Database:
         """Open the database's pool."""
@@ -51,6 +69,12 @@ class Database:
             # redact password from logs
             self.logger.info("Database connect: %s", self._url_repr())
             await self.backend.connect()
+            for replica_backend in self.replica_backends:
+                self.logger.info(
+                    "Replica connect: %s", self._url_repr(replica_backend.url.geturl())
+                )
+                await replica_backend.connect()
+
             self.is_connected = True
 
         return self
@@ -63,12 +87,18 @@ class Database:
 
         # Release connection
         cur_conn = self.current_conn
-        if cur_conn and cur_conn.is_ready:
+        if cur_conn and cur_conn.is_ready and cur_conn.backend is self.backend:
             await cur_conn.release()
             current_conn.set(None)
 
         if self.is_connected:
             await self.backend.disconnect()
+            for replica_backend in self.replica_backends:
+                self.logger.info(
+                    "Replica disconnect: %s", self._url_repr(replica_backend.url.geturl())
+                )
+                await replica_backend.disconnect()
+
             self.is_connected = False
 
     __aexit__ = disconnect
@@ -80,6 +110,14 @@ class Database:
     def connection(self, *, create: bool = True, **params) -> ConnectionContext:
         """Get/create a connection from/to the current context."""
         return ConnectionContext(self.backend, use_existing=not create, **params)
+
+    def replica(self, **params) -> ConnectionContext:
+        """Get a read-only connection to a replica backend."""
+        if not self.replica_backends:
+            raise RuntimeError("No replicas configured for this database")
+
+        backend = choice(self.replica_backends)  # noqa: S311
+        return ConnectionContext(backend, use_existing=False, read_only=True, **params)
 
     def transaction(self, *, create: bool = False, **params) -> TransactionContext:
         """Create a transaction."""

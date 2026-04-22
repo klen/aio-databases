@@ -28,6 +28,10 @@ SHORTCUTS = {
 RE_PARAM = re(r"([^%])(%s)")
 
 
+class ReadOnlyError(RuntimeError):
+    """Raised when a write operation is attempted on a read-only connection."""
+
+
 class ABCTransaction(abc.ABC, Generic[TVConnection]):
     __slots__ = "connection", "silent"
 
@@ -102,14 +106,15 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
     transaction_cls: ClassVar[type[ABCTransaction]]
     lock_cls: type[asyncio.Lock] = asyncio.Lock
 
-    __slots__ = "_conn", "_lock", "backend", "logger", "transactions"
+    __slots__ = "_conn", "_lock", "backend", "logger", "read_only", "transactions"
 
-    def __init__(self, backend: ABCDatabaseBackend, **unsupported_params):
+    def __init__(self, backend: ABCDatabaseBackend, *, read_only: bool = False, **ignore):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
         self.transactions: set[ABCTransaction] = set()
         self._conn: TVConnection | None = None
         self._lock = self.lock_cls()
+        self.read_only = read_only
 
     @property
     def is_ready(self) -> bool:
@@ -127,12 +132,18 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
                 await self.backend.release(conn)
 
     async def execute(self, query: Any, *params, **options) -> Any:
+        if self.read_only:
+            raise ReadOnlyError("Write operations are not allowed on read-only connections")
+
         sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
             return await self._execute(sql, *params, **options)
 
     async def executemany(self, query: Any, *params, **options) -> Any:
+        if self.read_only:
+            raise ReadOnlyError("Write operations are not allowed on read-only connections")
+
         sql = self.backend.__convert_sql__(query)
         self.logger.debug((sql, *params))
         async with self._lock:
