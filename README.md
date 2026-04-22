@@ -1,7 +1,6 @@
 # AIO-Databases
 
-The package gives you async support for a range of databases (SQLite,
-PostgreSQL, MySQL).
+The package gives you async support for a range of databases (SQLite, PostgreSQL, MySQL).
 
 [![Tests Status](https://github.com/klen/aio-databases/workflows/tests/badge.svg)](https://github.com/klen/aio-databases/actions)
 [![PYPI Version](https://img.shields.io/pypi/v/aio-databases)](https://pypi.org/project/aio-databases/)
@@ -10,7 +9,8 @@ PostgreSQL, MySQL).
 ## Features
 
 - Has no dependencies (except databases drivers)
-- Supports [asyncio](https://docs.python.org/3/library/asyncio.html) and [trio](https://github.com/python-trio/trio)
+- Supports [asyncio](https://docs.python.org/3/library/asyncio.html)
+  and [trio](https://github.com/python-trio/trio)
 - Supports [aiosqlite](https://github.com/omnilib/aiosqlite),
   [aiomysql](https://github.com/aio-libs/aiomysql),
   [aiopg](https://github.com/aio-libs/aiopg),
@@ -36,18 +36,18 @@ You have to choose and install the required database drivers with:
 
 ```shell
 # To support SQLite
-$ pip install aio-databases[aiosqlite]  # asyncio
+pip install aio-databases[aiosqlite]  # asyncio
 
 # To support MySQL
-$ pip install aio-databases[aiomysql]   # asyncio
-$ pip install aio-databases[trio_mysql] # trio
+pip install aio-databases[aiomysql]   # asyncio
+pip install aio-databases[trio_mysql] # trio
 
 # To support PostgreSQL (choose one)
-$ pip install aio-databases[aiopg]      # asyncio
-$ pip install aio-databases[asyncpg]    # asyncio
+pip install aio-databases[aiopg]      # asyncio
+pip install aio-databases[asyncpg]    # asyncio
 
 # To support ODBC (alpha state)
-$ pip install aio-databases[aioodbc]    # asyncio
+pip install aio-databases[aioodbc]    # asyncio
 ```
 
 ## Usage
@@ -210,7 +210,10 @@ Configure replicas and route reads through them.
     )
 ```
 
-Use `db.replica()` as an async context manager. Inside the block all queries run on a replica connection. `execute` and `executemany` raise `ReadOnlyError`, while `fetch*` queries work normally. Transactions are also blocked on replicas.
+Use `db.replica()` as an async context manager.
+Inside the block all queries run on a replica connection.
+`execute` and `executemany` raise `ReadOnlyError`, while `fetch*` queries work normally.
+Transactions are also blocked on replicas.
 
 ```python
     async with db.replica():
@@ -228,12 +231,11 @@ Nested primary connections are allowed inside a replica block.
         async with db.connection():
             await db.execute('insert into users ...')
 ```
-```
 
 ## Bug tracker
 
-If you have any suggestions, bug reports or annoyances please report them to
-the issue tracker at <https://github.com/klen/aio-databases/issues>
+If you have any suggestions, bug reports or annoyances please report them to the issue tracker at
+<https://github.com/klen/aio-databases/issues>
 
 ## Contributing
 
@@ -242,3 +244,6 @@ Development of the project happens at: <https://github.com/klen/aio-databases>
 ## License
 
 Licensed under a [MIT License](http://opensource.org/licenses/MIT)
+
+```text
+```
