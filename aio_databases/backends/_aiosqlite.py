@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qsl
 
 import aiosqlite
 
@@ -26,7 +27,8 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
         **options,
     ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
-        if ":memory:" in url.path:
+        will_be_uri = options.get("uri") or any(k == "uri" for k, _ in parse_qsl(url.query))
+        if not will_be_uri and ":memory:" in url.path:
             url = url._replace(path="")
 
         if init is None and (pragmas or functions):
@@ -41,7 +43,28 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
 
             init = init_conn
 
-        super(Backend, self).__init__(url, isolation_level=isolation_level, init=init, **options)
+        super().__init__(url, isolation_level=isolation_level, init=init, **options)
+
+        if self.options.get("uri"):
+            self._clean_uri_options(options)
+            self._database = self._build_database()
+        else:
+            self._database = self.url.path
+
+    def _clean_uri_options(self, explicit_options):
+        """Remove URL-derived query keys from options (they belong in filename)."""
+        url_query_keys = {k for k, _ in parse_qsl(self.url.query)}
+        for key in url_query_keys:
+            if key == "uri" or key in explicit_options:
+                continue
+            self.options.pop(key, None)
+
+    def _build_database(self) -> str:
+        database = self.url.netloc + self.url.path
+        database = database.lstrip("/")
+        if self.url.query:
+            database += "?" + self.url.query
+        return database
 
     def __convert_sql__(self, sql: Any) -> str:
         sql = str(sql)
@@ -50,7 +73,7 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
         return sql
 
     async def _acquire(self) -> aiosqlite.Connection:
-        return await aiosqlite.connect(database=self.url.path, **self.options)
+        return await aiosqlite.connect(database=self._database, **self.options)
 
     async def release(self, conn: aiosqlite.Connection):
         await conn.commit()

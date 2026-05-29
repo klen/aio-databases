@@ -84,3 +84,22 @@ async def test_persistent_db(tmp_path, user_cls: Model, manager: Manager):
 
         async with db.connection():
             assert await db.fetchall(user_manager.select())
+
+
+async def test_uri_mode_shared_memory():
+    """Support aiosqlite URI filenames with uri=True."""
+    db = Database("sqlite://file:memdb1?mode=memory&cache=shared", uri=True)
+    async with db, db.connection():
+        await db.execute("CREATE TABLE t (x INT)")
+        await db.execute("INSERT INTO t VALUES (1)")
+        # Nested second connection to the same shared in-memory DB sees the data.
+        async with db.connection() as conn2:
+            assert await conn2.fetchval("SELECT x FROM t") == 1
+
+
+async def test_uri_mode_memory():
+    """uri=True works with :memory: style URLs."""
+    db = Database("sqlite:///:memory:", uri=True)
+    async with db, db.connection():
+        await db.execute("CREATE TABLE t (x INT)")
+        assert await db.fetchval("SELECT 1") == 1
