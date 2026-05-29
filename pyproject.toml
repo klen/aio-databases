@@ -62,7 +62,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers -xsvl tests"
+addopts = "--strict-markers -xsvl"
 
 [tool.pyrefly]
 project-includes = ["aio_databases"]

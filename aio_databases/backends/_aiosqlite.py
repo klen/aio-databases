@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qsl
 
 import aiosqlite
+
+from aio_databases.log import logger as base_logger
 
 from . import RE_PARAM, ABCDatabaseBackend
 from .common import Connection
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Callable
 
 
@@ -17,18 +19,21 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
     db_type = "sqlite"
     connection_cls = Connection
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         url,
-        isolation_level: str | None = None,
+        *,
+        uri: bool = False,
+        convert_params: bool = False,
         init: Callable | None = None,
+        isolation_level: str | None = None,
+        logger: logging.Logger = base_logger,
         pragmas: tuple[tuple[str, str], ...] | None = None,
         functions: tuple[tuple[str, int, Callable], ...] | None = None,
         **options,
     ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
-        will_be_uri = options.get("uri") or any(k == "uri" for k, _ in parse_qsl(url.query))
-        if not will_be_uri and ":memory:" in url.path:
+        if not uri and ":memory:" in url.path:
             url = url._replace(path="")
 
         if init is None and (pragmas or functions):
@@ -43,21 +48,12 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
 
             init = init_conn
 
-        super().__init__(url, isolation_level=isolation_level, init=init, **options)
+        super().__init__(url, init=init, logger=logger, convert_params=convert_params, **options)
 
-        if self.options.get("uri"):
-            self._clean_uri_options(options)
-            self._database = self._build_database()
-        else:
-            self._database = self.url.path
+        if uri:
+            self.options = {**options, "isolation_level": isolation_level, "uri": True}
 
-    def _clean_uri_options(self, explicit_options):
-        """Remove URL-derived query keys from options (they belong in filename)."""
-        url_query_keys = {k for k, _ in parse_qsl(self.url.query)}
-        for key in url_query_keys:
-            if key == "uri" or key in explicit_options:
-                continue
-            self.options.pop(key, None)
+        self._database = self._build_database() if self.options.get("uri") else self.url.path
 
     def _build_database(self) -> str:
         database = self.url.netloc + self.url.path

@@ -88,7 +88,7 @@ async def test_persistent_db(tmp_path, user_cls: Model, manager: Manager):
 
 async def test_uri_mode_shared_memory():
     """Support aiosqlite URI filenames with uri=True."""
-    db = Database("sqlite://file:memdb1?mode=memory&cache=shared", uri=True)
+    db = Database("aiosqlite://file:memdb1?mode=memory&cache=shared", uri=True)
     async with db, db.connection():
         await db.execute("CREATE TABLE t (x INT)")
         await db.execute("INSERT INTO t VALUES (1)")
@@ -99,7 +99,7 @@ async def test_uri_mode_shared_memory():
 
 async def test_uri_mode_memory():
     """uri=True works with :memory: style URLs."""
-    db = Database("sqlite:///:memory:", uri=True)
+    db = Database("aiosqlite:///:memory:", uri=True)
     async with db, db.connection():
         await db.execute("CREATE TABLE t (x INT)")
         assert await db.fetchval("SELECT 1") == 1
