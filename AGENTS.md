@@ -36,7 +36,7 @@ make test  # full suite; needs Docker postgres + mysql
 - Do not commit `uv.lock` unless deps intentionally changed
 
 ## High-risk: avoid unless asked
-- `make release` / `make patch` / `make minor` — bumps version, tags, merges develop→master, pushes
+- `make release` / `make patch` / `make minor` — bumps version, tags, merges develop→main, pushes
 - `uv publish` — PyPI publish
 - `docker start postgres mysql` — fails without containers
 - Manual edits to `uv.lock` or version in `pyproject.toml`
@@ -45,6 +45,6 @@ make test  # full suite; needs Docker postgres + mysql
 `uv.lock`, `Changelog`, `db.sqlite`, `*.egg-info/`, `.git-commits.yaml`, tool caches (`.tox/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`).
 
 ## Notes
-- Default branch: `develop`. `master` is stable. PRs to `develop`.
+- Default branch: `develop`. `main` is stable. PRs to `develop`.
 - Only `trio-mysql` supports trio; others are asyncio-only.
 - Drivers are optional extras; core has no heavy runtime deps.
