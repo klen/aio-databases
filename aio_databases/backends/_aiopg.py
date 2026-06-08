@@ -30,7 +30,8 @@ class Backend(ABCDatabaseBackend[Connection]):
         return await connect(self.dsn, **self.options)
 
     async def release(self, conn: Connection):
-        conn.close()
+        if not conn.closed:
+            conn.close()
 
 
 class PoolBackend(Backend):
