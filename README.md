@@ -175,6 +175,25 @@ If there any connection already `db.method` would be using the current one
     # the connection released there
 ```
 
+#### Reconnect
+
+Pass `reconnect=True` to automatically drop a broken connection and acquire a fresh one:
+
+```python
+    async with db.connection(reconnect=True):
+        # If the connection dies, the query that hits the failure still raises,
+        # but the broken connection is dropped and re-acquired eagerly.
+        # The next query runs on the fresh connection.
+        await db.fetchone('select %s', 42)
+
+    # Or force a reconnect manually
+    await conn.reconnect()
+```
+
+- A failed query is never retried — the error propagates to the caller
+- The connection is re-acquired immediately after a connection error
+- Transactions are not restored: a transaction interrupted by a dead connection fails
+
 ### Manage transactions
 
 ```python

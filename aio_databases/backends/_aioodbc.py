@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import aioodbc
+import pyodbc
 
 from . import RE_PARAM, ABCDatabaseBackend
 from .common import Connection
@@ -20,6 +21,7 @@ class Backend(ABCDatabaseBackend[aioodbc.Connection]):
     name = "aioodbc"
     db_type = "odbc"
     connection_cls = Connection
+    connection_errors = (pyodbc.OperationalError, pyodbc.InterfaceError)
 
     def __init__(self, *args, db_type: str | None = None, **kwargs):
         self.db_type = db_type or self.db_type

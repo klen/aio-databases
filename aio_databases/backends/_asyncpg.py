@@ -86,6 +86,11 @@ class Backend(ABCDatabaseBackend[asyncpg.Connection]):
     name = "asyncpg"
     db_type = "postgresql"
     connection_cls = Connection
+    connection_errors = (
+        OSError,
+        asyncpg.exceptions.InterfaceError,
+        asyncpg.exceptions.PostgresConnectionError,
+    )
 
     def __init__(self, url, *, json=False, **kwargs):
         super(Backend, self).__init__(url, **kwargs)

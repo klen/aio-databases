@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiomysql import Connection, Pool, connect, create_pool
+from pymysql.err import InterfaceError, OperationalError
 
 from . import ABCDatabaseBackend
 from .common import Connection as Session
@@ -10,6 +11,7 @@ class Backend(ABCDatabaseBackend[Connection]):
     name = "aiomysql"
     db_type = "mysql"
     connection_cls = Session
+    connection_errors = (InterfaceError, OperationalError, OSError)
 
     def __init__(self, *args, **kwargs):
         super(Backend, self).__init__(*args, **kwargs)

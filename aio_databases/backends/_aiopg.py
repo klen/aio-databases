@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from aiopg import Connection, Pool, connect, create_pool
+from psycopg2 import InterfaceError, OperationalError
 
 from . import ABCDatabaseBackend
 from .common import Connection as Ses
@@ -21,6 +22,7 @@ class Backend(ABCDatabaseBackend[Connection]):
     name = "aiopg"
     db_type = "postgresql"
     connection_cls = Session
+    connection_errors = (InterfaceError, OperationalError)
 
     def __init__(self, url, **kwargs):
         super(Backend, self).__init__(url, **kwargs)

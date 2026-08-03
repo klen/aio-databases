@@ -15,6 +15,11 @@ class Backend(ABCDatabaseBackend[trio_mysql.Connection]):
     name = "trio-mysql"
     db_type = "mysql"
     connection_cls = Connection
+    connection_errors = (
+        trio_mysql.err.OperationalError,
+        trio_mysql.err.InterfaceError,
+        OSError,
+    )
 
     def __init__(self, *args, autocommit=True, charset="utf8", use_unicode=True, **options):
         """Setup default value for autocommit."""

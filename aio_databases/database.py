@@ -168,7 +168,8 @@ class ConnectionContext:
 
     def __init__(self, backend: ABCDatabaseBackend, *, use_existing: bool = False, **params):
         conn = current_conn.get()
-        self.create_conn = not (conn and conn.is_ready and use_existing)
+        reusable = conn and (conn.is_ready or conn.should_reconnect)
+        self.create_conn = not (reusable and use_existing)
         if self.create_conn:
             conn = backend.connection(**params)
 
@@ -179,6 +180,9 @@ class ConnectionContext:
         if self.create_conn:
             await conn.acquire()
             self.token = current_conn.set(conn)
+        elif not conn.is_ready:
+            # A reconnect-enabled connection has been dropped: acquire it again
+            await conn.acquire()
         return conn
 
     async def __aexit__(self, *_):
@@ -212,3 +216,9 @@ class TransactionContext(ConnectionContext):
     async def __aexit__(self, *args):
         await self.trans.__aexit__(*args)
         await super(TransactionContext, self).__aexit__(*args)
+
+
+def get_current_connection() -> ABCConnection:
+    conn = current_conn.get()
+    assert conn, "No current connection in context. Use 'async with db.connection()' to create one."
+    return conn

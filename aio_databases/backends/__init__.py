@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import abc
 import asyncio
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, ClassVar, Generic
+from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generic
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -106,15 +106,31 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
     transaction_cls: ClassVar[type[ABCTransaction]]
     lock_cls: type[asyncio.Lock] = asyncio.Lock
 
-    __slots__ = "_conn", "_lock", "backend", "logger", "read_only", "transactions"
+    __slots__ = (
+        "_conn",
+        "_lock",
+        "backend",
+        "logger",
+        "read_only",
+        "should_reconnect",
+        "transactions",
+    )
 
-    def __init__(self, backend: ABCDatabaseBackend, *, read_only: bool = False, **ignore):
+    def __init__(
+        self,
+        backend: ABCDatabaseBackend,
+        *,
+        read_only: bool = False,
+        reconnect: bool = False,
+        **ignore,
+    ):
         self.backend = backend
         self.logger: logging.Logger = backend.logger
         self.transactions: set[ABCTransaction] = set()
         self._conn: TVConnection | None = None
         self._lock = self.lock_cls()
         self.read_only = read_only
+        self.should_reconnect = reconnect
 
     @property
     def is_ready(self) -> bool:
@@ -131,52 +147,59 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
                 conn, self._conn = self._conn, None
                 await self.backend.release(conn)
 
+    async def reconnect(self):
+        await self.release()
+        await self.acquire()
+
+    @asynccontextmanager
+    async def _process(self, query: Any, *params, **options) -> AsyncGenerator[str]:
+        """Process the connection to ensure it is ready for use."""
+        backend = self.backend
+        sql = backend.__convert_sql__(query)
+        self.logger.debug((sql, *params))
+        try:
+            async with self._lock:
+                yield sql
+
+        except backend.connection_errors:
+            if self.should_reconnect:
+                self.logger.warning("Connection is broken and dropped, it will be re-acquired")
+                await self.reconnect()
+
+            raise
+
     async def execute(self, query: Any, *params, **options) -> Any:
         if self.read_only:
             raise ReadOnlyError("Write operations are not allowed on read-only connections")
 
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._execute(sql, *params, **options)
 
     async def executemany(self, query: Any, *params, **options) -> Any:
         if self.read_only:
             raise ReadOnlyError("Write operations are not allowed on read-only connections")
 
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._executemany(sql, *params, **options)
 
     async def fetchall(self, query: Any, *params, **options) -> list[TRecord]:
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._fetchall(sql, *params, **options)
 
     async def fetchmany(self, size: int, query: Any, *params, **options) -> list[TRecord]:
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._fetchmany(size, sql, *params, **options)
 
     async def fetchone(self, query: Any, *params, **options) -> TRecord | None:
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._fetchone(sql, *params, **options)
 
     async def fetchval(self, query: Any, *params, column: Any = 0, **options) -> Any:
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             return await self._fetchval(sql, *params, column=column, **options)
 
     async def iterate(self, query: Any, *params, **options) -> AsyncIterator[TRecord]:
-        sql = self.backend.__convert_sql__(query)
-        self.logger.debug((sql, *params))
-        async with self._lock:
+        async with self._process(query, *params, **options) as sql:
             async for res in self._iterate(sql, *params, **options):
                 yield res
 
@@ -218,6 +241,7 @@ class ABCDatabaseBackend(abc.ABC, Generic[TVConnection]):
     _pool: Any
 
     connection_cls: ClassVar[type[ABCConnection]]
+    connection_errors: ClassVar[tuple[type[Exception], ...]] = ()
 
     def __init__(
         self,
