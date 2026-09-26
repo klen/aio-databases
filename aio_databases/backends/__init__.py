@@ -134,11 +134,15 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
 
     @property
     def is_ready(self) -> bool:
+        """Check if the connection is ready for use."""
         return self._conn is not None
 
     async def acquire(self):
-        if self._conn is None:
+        if not self.is_ready:
             async with self._lock:
+                if self._conn is not None:
+                    conn, self._conn = self._conn, None
+                    await self.backend.release(conn)
                 self._conn = await self.backend.acquire()
 
     async def release(self, *_):

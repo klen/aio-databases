@@ -41,6 +41,19 @@ class Transaction(ABCTransaction[asyncpg.Connection]):
 class Connection(ABCConnection[asyncpg.Connection]):
     transaction_cls = Transaction
 
+    @property
+    def is_ready(self) -> bool:
+        conn = self._conn
+        if conn is None:
+            return False
+
+        try:
+            return not conn.is_closed()
+        except AttributeError:
+            # A released PoolConnectionProxy detaches its underlying connection,
+            # so attribute access raises AttributeError: it is not ready.
+            return False
+
     async def _execute(self, query: str, *params, **options) -> Any:
         conn = self._conn
         assert conn is not None
