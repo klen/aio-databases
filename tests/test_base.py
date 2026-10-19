@@ -2,6 +2,7 @@ import pytest
 
 from aio_databases import Database
 from aio_databases.backends import BACKENDS
+from aio_databases.backends.common import pg_parse_status
 from aio_databases.record import Record
 
 
@@ -70,3 +71,14 @@ def test_params():
     db = Database("aiosqlite://localhost", convert_params=True)
     assert db.backend.__convert_sql__('select "%s", %s') == 'select "?", ?'
     assert db.backend.__convert_sql__('select "%%s"') == 'select "%%s"'
+
+
+def test_pg_parse_status():
+    assert pg_parse_status("INSERT 0 1") == (1, "0")
+    assert pg_parse_status("UPDATE 3") == (3, None)
+    assert pg_parse_status("DELETE 2") == (2, None)
+    assert pg_parse_status("SELECT 5") == "SELECT 5"
+    assert pg_parse_status("CREATE TABLE") == "CREATE TABLE"
+    # single-word command tags must not raise
+    assert pg_parse_status("VACUUM") == "VACUUM"
+    assert pg_parse_status("SET") == "SET"

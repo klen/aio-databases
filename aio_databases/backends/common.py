@@ -121,7 +121,7 @@ class PGReplacer:
 
 
 def pg_parse_status(status: str) -> str | tuple[int, Any]:
-    operation, params = status.split(" ", 1)
+    operation, _, params = status.partition(" ")
     if operation == "INSERT":
         oid, rows = params.split()
         return int(rows), oid
