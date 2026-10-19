@@ -19,9 +19,8 @@ async def test_base(db: Database):
     assert res == 1
 
     with pytest.raises(RuntimeError):
-        async with db.connection(create=False) as conn:
-            async with db.transaction():
-                await conn.release()
+        async with db.connection(create=False) as conn, db.transaction():
+            await conn.release()
 
     async with db.connection(create=False) as conn, db.transaction(silent=True):
         await conn.release()
