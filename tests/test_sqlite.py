@@ -72,6 +72,20 @@ async def test_sqlite_three_slash_url_is_absolute(tmp_path):
     assert db_path.exists()
 
 
+async def test_sqlite_two_slash_url_uses_file(tmp_path, monkeypatch):
+    # Two-slash URLs (sqlite://file.db) must use the file, not a temp db.
+    monkeypatch.chdir(tmp_path)
+    async with Database("sqlite://rel.db") as db, db.connection():
+        await db.execute("CREATE TABLE t (x INT)")
+        await db.execute("INSERT INTO t VALUES (1)")
+    assert (tmp_path / "rel.db").exists()
+
+
+def test_sqlite_memory_url_is_in_memory():
+    # sqlite:///:memory: must map to the in-memory db, not a temp file on disk.
+    assert Database("sqlite:///:memory:").backend._database == ":memory:"
+
+
 async def test_persistent_db(tmp_path, user_cls: Model, manager: Manager):
 
     user_manager = manager(user_cls)

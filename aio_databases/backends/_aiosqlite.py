@@ -34,7 +34,7 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
     ):
         """Set a default isolation level (enable autocommit). Fix in memory URL."""
         if not uri and ":memory:" in url.path:
-            url = url._replace(path="")
+            url = url._replace(path=":memory:")
 
         if init is None and (pragmas or functions):
 
@@ -53,7 +53,9 @@ class Backend(ABCDatabaseBackend[aiosqlite.Connection]):
         if uri:
             self.options = {**options, "isolation_level": isolation_level, "uri": True}
 
-        self._database = self._build_database() if self.options.get("uri") else self.url.path
+        self._database = (
+            self._build_database() if self.options.get("uri") else self.url.netloc + self.url.path
+        )
 
     def _build_database(self) -> str:
         database = self.url.netloc + self.url.path
