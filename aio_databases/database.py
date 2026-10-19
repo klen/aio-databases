@@ -52,10 +52,6 @@ class Database:
 
         return backend_cls(parsed_url, logger=self.logger, **options)
 
-    @property
-    def parsed_url(self):
-        return self.backend.url
-
     def _url_repr(self, url: str | None = None) -> str:
         """Redact password from URL for representation."""
         parsed = urlsplit(url) if url is not None else self.backend.url
@@ -216,9 +212,3 @@ class TransactionContext(ConnectionContext):
     async def __aexit__(self, *args):
         await self.trans.__aexit__(*args)
         await super(TransactionContext, self).__aexit__(*args)
-
-
-def get_current_connection() -> ABCConnection:
-    conn = current_conn.get()
-    assert conn, "No current connection in context. Use 'async with db.connection()' to create one."
-    return conn

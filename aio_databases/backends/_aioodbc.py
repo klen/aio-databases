@@ -9,14 +9,6 @@ from . import RE_PARAM, ABCDatabaseBackend
 from .common import Connection
 
 
-class DBType:
-    def __get__(self, obj, **_):
-        if obj is None:
-            return "odbc"
-
-        return obj.options["dsn"]
-
-
 class Backend(ABCDatabaseBackend[aioodbc.Connection]):
     name = "aioodbc"
     db_type = "odbc"
