@@ -77,7 +77,7 @@ def test_params():
 
 
 def test_pg_parse_status():
-    assert pg_parse_status("INSERT 0 1") == (1, "0")
+    assert pg_parse_status("INSERT 0 1") == (1, None)
     assert pg_parse_status("UPDATE 3") == (3, None)
     assert pg_parse_status("DELETE 2") == (2, None)
     assert pg_parse_status("SELECT 5") == "SELECT 5"

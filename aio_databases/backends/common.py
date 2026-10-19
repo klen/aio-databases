@@ -123,8 +123,9 @@ class PGReplacer:
 def pg_parse_status(status: str) -> str | tuple[int, Any]:
     operation, _, params = status.partition(" ")
     if operation == "INSERT":
-        oid, rows = params.split()
-        return int(rows), oid
+        # asyncpg has no lastrowid; the OID is always 0 on modern Postgres.
+        _, rows = params.split()
+        return int(rows), None
 
     if operation in {"UPDATE", "DELETE"}:
         return int(params.split()[0]), None
