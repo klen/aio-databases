@@ -1,9 +1,12 @@
+from urllib.parse import urlsplit
+
 import pytest
 
 from aio_databases import Database
 from aio_databases.backends import BACKENDS
 from aio_databases.backends.common import pg_parse_status
 from aio_databases.record import Record
+from aio_databases.url import redact_url
 
 
 def test_backends(arm: bool):
@@ -82,3 +85,20 @@ def test_pg_parse_status():
     # single-word command tags must not raise
     assert pg_parse_status("VACUUM") == "VACUUM"
     assert pg_parse_status("SET") == "SET"
+
+
+def test_redact_url():
+    url = "postgres://user:secret@host:5432/db"
+    redacted = redact_url(urlsplit(url)).geturl()
+    assert redacted == "postgres://user:***@host:5432/db"
+    assert "secret" not in redacted
+
+    # no password: unchanged
+    assert redact_url(urlsplit("postgres://user@host/db")).geturl() == "postgres://user@host/db"
+    # empty username, password present
+    assert redact_url(urlsplit("postgres://:secret@host/db")).geturl() == "postgres://:***@host/db"
+    # no port
+    assert (
+        redact_url(urlsplit("postgres://user:secret@host/db")).geturl()
+        == "postgres://user:***@host/db"
+    )
