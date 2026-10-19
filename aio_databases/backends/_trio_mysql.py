@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Callable, ClassVar
+
 import trio
 import trio_mysql
 
@@ -9,6 +11,7 @@ from .common import Connection as Connection_
 
 class Connection(Connection_[trio_mysql.Connection]):
     lock_cls = trio.Lock  # type: ignore[assignment]
+    current_task: ClassVar[Callable[[], Any]] = staticmethod(trio.lowlevel.current_task)
 
 
 class Backend(ABCDatabaseBackend[trio_mysql.Connection]):

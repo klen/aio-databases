@@ -1,9 +1,10 @@
+import asyncio
 from urllib.parse import urlsplit
 
 import pytest
 
 from aio_databases import Database
-from aio_databases.backends import BACKENDS
+from aio_databases.backends import BACKENDS, ReentrantLock
 from aio_databases.backends.common import pg_parse_status
 from aio_databases.record import Record
 from aio_databases.url import redact_url
@@ -102,3 +103,39 @@ def test_redact_url():
         redact_url(urlsplit("postgres://user:secret@host/db")).geturl()
         == "postgres://user:***@host/db"
     )
+
+
+def test_reentrant_lock():
+    async def check():
+        lock = ReentrantLock(asyncio.Lock, asyncio.current_task)
+
+        await lock.acquire()
+        await lock.acquire()  # same-task re-entry must not deadlock
+        lock.release()
+        lock.release()
+
+        order = []
+
+        async def contender():
+            async with lock:
+                order.append("contender")
+
+        async with lock:
+            task = asyncio.create_task(contender())
+            await asyncio.sleep(0)
+            assert order == []  # the other task is still blocked
+        await task
+        assert order == ["contender"]
+
+    asyncio.run(check())
+
+
+def test_iterate_nested_query_no_deadlock():
+    async def check():
+        async with Database("sqlite:///:memory:") as db, db.connection():
+            await db.execute("CREATE TABLE t (x INT)")
+            await db.execute("INSERT INTO t VALUES (1)")
+            async for _ in db.iterate("SELECT x FROM t"):
+                assert await db.fetchval("SELECT COUNT(*) FROM t") == 1
+
+    asyncio.run(check())

@@ -4,7 +4,7 @@ import abc
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from re import compile as re
-from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generic
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, ClassVar, Generic
 from urllib.parse import SplitResult, parse_qsl
 
 from aio_databases.log import logger as base_logger
@@ -30,6 +30,46 @@ RE_PARAM = re(r"([^%])(%s)")
 
 class ReadOnlyError(RuntimeError):
     """Raised when a write operation is attempted on a read-only connection."""
+
+
+class ReentrantLock:
+    """A reentrant lock over an asyncio or trio lock.
+
+    ``Connection.iterate`` keeps the connection locked for the whole row loop
+    so other tasks cannot use the connection concurrently. Re-entry is allowed
+    only for the task that already holds the lock, so a nested query inside the
+    loop does not deadlock.
+    """
+
+    __slots__ = ("_count", "_current_task", "_lock", "_owner")
+
+    def __init__(self, lock_cls: type, current_task: Callable[[], Any]) -> None:
+        self._lock = lock_cls()
+        self._current_task = current_task
+        self._owner: Any = None
+        self._count = 0
+
+    async def acquire(self) -> None:
+        owner = self._current_task()
+        if self._owner is owner:
+            self._count += 1
+            return
+        await self._lock.acquire()
+        self._owner = owner
+        self._count = 1
+
+    def release(self) -> None:
+        self._count -= 1
+        if not self._count:
+            self._owner = None
+            self._lock.release()
+
+    async def __aenter__(self):
+        await self.acquire()
+        return self
+
+    async def __aexit__(self, *_):
+        self.release()
 
 
 class ABCTransaction(abc.ABC, Generic[TVConnection]):
@@ -105,6 +145,7 @@ class ABCTransaction(abc.ABC, Generic[TVConnection]):
 class ABCConnection(abc.ABC, Generic[TVConnection]):
     transaction_cls: ClassVar[type[ABCTransaction]]
     lock_cls: type[asyncio.Lock] = asyncio.Lock
+    current_task: ClassVar[Callable[[], Any]] = staticmethod(asyncio.current_task)
 
     __slots__ = (
         "_conn",
@@ -128,7 +169,7 @@ class ABCConnection(abc.ABC, Generic[TVConnection]):
         self.logger: logging.Logger = backend.logger
         self.transactions: set[ABCTransaction] = set()
         self._conn: TVConnection | None = None
-        self._lock = self.lock_cls()
+        self._lock = ReentrantLock(self.lock_cls, type(self).current_task)
         self.read_only = read_only
         self.should_reconnect = reconnect
 
